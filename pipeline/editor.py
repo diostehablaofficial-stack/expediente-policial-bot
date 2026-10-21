@@ -68,8 +68,9 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     
     cmd = [
         "yt-dlp",
+        "-v",
         "--download-sections", time_range,
-        "--extractor-args", "youtube:player_client=android,web",
+        "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416",
         "--no-check-certificates",
     ]
     if os.path.exists("cookies.txt"):
@@ -82,8 +83,16 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         "-o", output_mp4,
         video_url
     ])
-    subprocess.run(cmd, check=True)
+    
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        print(f"[Editor] ERROR downloading video section!")
+        print(f"STDOUT:\n{proc.stdout}")
+        print(f"STDERR:\n{proc.stderr}")
+        raise RuntimeError(f"yt-dlp failed with code {proc.returncode}")
+        
     print(f"[Editor] Video segment downloaded successfully: {output_mp4}")
+
 
 
 

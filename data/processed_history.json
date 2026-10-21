@@ -5,5 +5,15 @@
   "CASE_004_LAS_VEGAS_WINDSHIELD",
   "CASE_005_VALLEJO_AR15",
   "CASE_006_CAMBRIDGE_POLICE",
-  "CASE_007_NYPD_TIMES_SQUARE"
+  "CASE_007_NYPD_TIMES_SQUARE",
+  {
+    "case_code": "EXP_008",
+    "video_id": "lYcECeBgZks",
+    "original_title": "Deputy Gets Shot While Rushing for Cover During Shootout",
+    "spanish_title": "¡OFICIAL CAE HERIDO! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.8/EXP_008_Short_Vertical.mp4",
+    "buffer_post_id": "6ad9279df413b8477a60dbec",
+    "status": "scheduled",
+    "processed_at": "2026-10-21 20:59:10"
+  }
 ]

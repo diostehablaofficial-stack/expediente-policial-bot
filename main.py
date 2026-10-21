@@ -77,12 +77,14 @@ def run_pipeline():
     generate_header_card(metadata["badge_sub"], metadata["badge_title"], header_png, FONTS_DIR)
     
     raw_clip_mp4 = os.path.join(case_work_dir, "raw_slice.mp4")
+    video_url = metadata.get("video_url") or candidate.get("url") or f"https://www.youtube.com/watch?v={candidate['id']}"
     download_video_slice(
-        candidate["url"],
+        video_url,
         metadata["slice_start"],
         metadata["slice_duration"],
         raw_clip_mp4
     )
+
     
     output_mp4 = os.path.join(OUTPUT_DIR, f"{case_code}_Short_Vertical.mp4")
     render_short_vertical(

@@ -99,7 +99,10 @@ def get_video_details(video_url, basic_info=None):
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if proc.returncode == 0 and proc.stdout.strip():
-            return json.loads(proc.stdout)
+            data = json.loads(proc.stdout)
+            data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
+            return data
+
         else:
             print(f"[Detector] yt-dlp dump-json warning/error: {proc.stderr.strip()[:300]}")
     except Exception as e:

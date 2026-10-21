@@ -138,10 +138,12 @@ def publish_to_buffer_youtube(video_url, title, description, channel_id, token, 
             "metadata": {
                 "youtube": {
                     "title": yt_title,
+                    "categoryId": "25",
                     "privacy": "public",
                     "madeForKids": False
                 }
             }
+
         }
     }
     

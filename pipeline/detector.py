@@ -1,0 +1,125 @@
+import json
+import os
+import subprocess
+import requests
+import xml.etree.ElementTree as ET
+
+CHANNEL_URL = "https://www.youtube.com/@PoliceActivity/videos"
+CHANNEL_ID = "UCXMYxKMh3prxnM_4kYZuB3g"
+RSS_FEED_URL = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
+
+def get_processed_ids(history_file):
+    if not os.path.exists(history_file):
+        return set()
+    try:
+        with open(history_file, "r", encoding="utf-8") as f:
+            data = json.load(f)
+            # data can be list of strings or list of dicts
+            ids = set()
+            for item in data:
+                if isinstance(item, str):
+                    ids.add(item)
+                elif isinstance(item, dict) and "video_id" in item:
+                    ids.add(item["video_id"])
+            return ids
+    except Exception as e:
+        print(f"[Detector] Warning reading history: {e}")
+        return set()
+
+def fetch_channel_videos():
+    """
+    Fetches the latest videos using RSS feed, with fallback to yt-dlp flat-playlist.
+    """
+    videos = []
+    
+    # Method 1: RSS Feed (Fastest, lightest)
+    try:
+        print(f"[Detector] Fetching channel RSS feed from {RSS_FEED_URL}...")
+        res = requests.get(RSS_FEED_URL, timeout=12)
+        if res.status_code == 200:
+            root = ET.fromstring(res.content)
+            ns = {
+                "atom": "http://www.w3.org/2005/Atom",
+                "yt": "http://www.youtube.com/xml/schemas/2015"
+            }
+            for entry in root.findall("atom:entry", ns):
+                vid = entry.find("yt:videoId", ns).text
+                title = entry.find("atom:title", ns).text
+                published = entry.find("atom:published", ns).text if entry.find("atom:published", ns) is not None else ""
+                videos.append({
+                    "id": vid,
+                    "title": title,
+                    "published": published,
+                    "url": f"https://www.youtube.com/watch?v={vid}"
+                })
+            print(f"[Detector] Found {len(videos)} videos via RSS feed.")
+            return videos
+    except Exception as e:
+        print(f"[Detector] RSS feed query failed: {e}. Falling back to yt-dlp...")
+
+    # Method 2: yt-dlp flat playlist
+    try:
+        cmd = [
+            "yt-dlp", "--flat-playlist", "--dump-single-json",
+            "--playlist-end", "10",
+            CHANNEL_URL
+        ]
+        out = subprocess.check_output(cmd).decode("utf-8", errors="ignore")
+        data = json.loads(out)
+        for e in data.get("entries", []):
+            videos.append({
+                "id": e.get("id"),
+                "title": e.get("title"),
+                "duration": e.get("duration"),
+                "url": f"https://www.youtube.com/watch?v={e.get('id')}"
+            })
+        print(f"[Detector] Found {len(videos)} videos via yt-dlp.")
+        return videos
+    except Exception as e:
+        print(f"[Detector] yt-dlp flat-playlist query failed: {e}")
+        return []
+
+def get_video_details(video_url):
+    """
+    Retrieves full video details (chapters, full description, duration) via yt-dlp.
+    """
+    cmd = ["yt-dlp", "--dump-json", "--skip-download", video_url]
+    out = subprocess.check_output(cmd).decode("utf-8", errors="ignore")
+    return json.loads(out)
+
+def find_next_candidate(history_file):
+    """
+    Checks channel videos against processed history and returns the first unprocessed candidate.
+    """
+    processed = get_processed_ids(history_file)
+    print(f"[Detector] Loaded {len(processed)} previously processed cases/videos.")
+    
+    videos = fetch_channel_videos()
+    if not videos:
+        print("[Detector] No videos retrieved from channel.")
+        return None
+        
+    for v in videos:
+        vid = v["id"]
+        # Check if video id or case tag matching video id is in processed set
+        if vid in processed:
+            continue
+        # Also check if any processed key contains this video id
+        already_done = any(vid in str(p) for p in processed)
+        if already_done:
+            continue
+            
+        print(f"[Detector] Found new candidate video: {v['title']} (ID: {vid})")
+        details = get_video_details(v["url"])
+        return details
+        
+    print("[Detector] All recent videos have already been processed.")
+    return None
+
+if __name__ == "__main__":
+    hist = os.path.join(os.path.dirname(__file__), "..", "data", "processed_history.json")
+    cand = find_next_candidate(hist)
+    if cand:
+        print("Candidate ready:", cand.get("title"))
+    else:
+        print("No candidates found.")

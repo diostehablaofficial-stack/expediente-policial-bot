@@ -25,10 +25,16 @@ jobs:
           python-version: "3.11"
           cache: "pip"
 
+      - name: Set up Deno (for yt-dlp JS challenge solver)
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
       - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
+
 
       - name: Install Python Dependencies
         run: |

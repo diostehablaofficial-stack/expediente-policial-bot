@@ -67,13 +67,18 @@ def analyze_rule_based(video_data):
     duration = video_data.get("duration", 180)
     chapters = video_data.get("chapters", [])
     
+    # Strip leading disclaimer lines (e.g. * (Disclaimer: The content in this video...))
+    clean_desc = re.sub(r"^\s*[\*\(\[]?\s*Disclaimer[^\n]*\n+", "", desc, flags=re.IGNORECASE)
+    clean_desc = re.sub(r"^\s*[\*\(\[]?\s*Note[^\n]*\n+", "", clean_desc, flags=re.IGNORECASE)
+    
     # Location regex: e.g. "Greenville County, South Carolina — On September..."
-    loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", desc)
+    loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", clean_desc)
     location = loc_match.group(1).strip() if loc_match else "ESTADOS UNIDOS"
     # Clean location
     location = re.sub(r"[\*\(\)]", "", location).strip()
     if len(location) > 40:
         location = location[:40].strip()
+
         
     # Translate / format title to exciting Spanish
     es_title = title

@@ -30,16 +30,30 @@ jobs:
         with:
           deno-version: v2.x
 
+      - name: Start BgUtils PO Token Provider (Docker)
+        run: |
+          docker run -d --name bgutil-provider -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider:latest
+          sleep 5
+          curl -I http://127.0.0.1:4416/ || echo "PO Token server booting"
+
       - name: Install FFmpeg
         run: |
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-
       - name: Install Python Dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
+
+      - name: Setup Optional YouTube Cookies
+        env:
+          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
+        run: |
+          if [ -n "$YOUTUBE_COOKIES" ]; then
+            echo "$YOUTUBE_COOKIES" > cookies.txt
+            echo "Loaded custom YouTube cookies."
+          fi
 
       - name: Run Video Creation & Publishing Pipeline
         env:

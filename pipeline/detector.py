@@ -90,8 +90,11 @@ def get_video_details(video_url, basic_info=None):
         "--skip-download",
         "--no-check-certificates",
         "--extractor-args", "youtube:player_client=android,web",
-        video_url
     ]
+    if os.path.exists("cookies.txt"):
+        cmd.extend(["--cookies", "cookies.txt"])
+    cmd.append(video_url)
+
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if proc.returncode == 0 and proc.stdout.strip():

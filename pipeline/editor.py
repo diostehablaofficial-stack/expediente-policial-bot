@@ -71,14 +71,20 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         "--download-sections", time_range,
         "--extractor-args", "youtube:player_client=android,web",
         "--no-check-certificates",
+    ]
+    if os.path.exists("cookies.txt"):
+        cmd.extend(["--cookies", "cookies.txt"])
+        
+    cmd.extend([
         "-f", "bv*[height<=1080]+ba/b[height<=1080]",
         "--merge-output-format", "mp4",
         "--force-overwrites",
         "-o", output_mp4,
         video_url
-    ]
+    ])
     subprocess.run(cmd, check=True)
     print(f"[Editor] Video segment downloaded successfully: {output_mp4}")
+
 
 
 def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_dir, output_mp4):

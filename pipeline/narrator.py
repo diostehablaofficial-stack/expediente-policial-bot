@@ -1,20 +1,24 @@
+import os
+import sys
+import json
+import base64
+import requests
+import subprocess
 import asyncio
 import edge_tts
-import os
-import subprocess
-import json
-import sys
 
-# Ensure UTF-8 output
 if sys.stdout.encoding != 'utf-8':
     try:
         sys.stdout.reconfigure(encoding='utf-8')
     except Exception:
         pass
 
-VOICE = "es-MX-JorgeNeural"
-RATE = "+0%"
-PITCH = "-2Hz"
+GEMINI_TTS_MODEL = "gemini-3.8-flash-tts"
+GEMINI_VOICE = "Fenrir" # Deep, authoritative, human masculine voice
+
+EDGE_VOICE = "es-MX-JorgeNeural"
+EDGE_RATE = "+0%"
+EDGE_PITCH = "-2Hz"
 
 def sec_to_ass_time(sec):
     h = int(sec // 3600)
@@ -32,23 +36,88 @@ def get_audio_duration(file_path):
     out = subprocess.check_output(cmd).decode().strip()
     return float(out)
 
-async def synthesize_speech(text, output_mp3):
-    comm = edge_tts.Communicate(text, VOICE, rate=RATE, pitch=PITCH)
-    await comm.save(output_mp3)
+def synthesize_with_gemini(text, api_key, output_wav):
+    """
+    Uses Google Gemini 3.8 Flash TTS for ultra-realistic, human voice synthesis.
+    """
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_TTS_MODEL}:generateContent?key={api_key}"
+    payload = {
+        "contents": [{"parts": [{"text": f"Narra con tono serio, humano, documental y dramático de True Crime: {text}"}]}],
+        "generationConfig": {
+            "responseModalities": ["AUDIO"],
+            "speechConfig": {
+                "voiceConfig": {
+                    "prebuiltVoiceConfig": {
+                        "voiceName": GEMINI_VOICE
+                    }
+                }
+            }
+        }
+    }
+    
+    r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20)
+    if r.status_code == 200:
+        res = r.json()
+        b64_data = res["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+        raw_bytes = base64.b64decode(b64_data)
+        
+        # Write temporary raw file and convert with ffmpeg to standard 48kHz stereo WAV
+        tmp_raw = output_wav + ".tmp"
+        with open(tmp_raw, "wb") as f:
+            f.write(raw_bytes)
+            
+        subprocess.run([
+            "ffmpeg", "-y", "-i", tmp_raw,
+            "-ar", "48000", "-ac", "2",
+            output_wav
+        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+        
+        if os.path.exists(tmp_raw):
+            os.remove(tmp_raw)
+            
+        return True
+    else:
+        print(f"[Narrator] Gemini TTS error {r.status_code}: {r.text[:200]}")
+        return False
 
-def convert_to_wav(input_mp3, output_wav):
-    cmd = [
-        "ffmpeg", "-y", "-i", input_mp3,
+async def synthesize_with_edge(text, output_wav):
+    """
+    Fallback to Microsoft neural voice (Jorge) if Gemini TTS is unavailable or rate-limited.
+    """
+    tmp_mp3 = output_wav + ".mp3"
+    comm = edge_tts.Communicate(text, EDGE_VOICE, rate=EDGE_RATE, pitch=EDGE_PITCH)
+    await comm.save(tmp_mp3)
+    
+    subprocess.run([
+        "ffmpeg", "-y", "-i", tmp_mp3,
         "-ar", "48000", "-ac", "2",
         output_wav
-    ]
-    subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+    
+    if os.path.exists(tmp_mp3):
+        os.remove(tmp_mp3)
+
+def synthesize_clip(item, api_key, work_dir):
+    wav_path = os.path.join(work_dir, f"{item['id']}.wav")
+    success = False
+    
+    if api_key:
+        print(f"[Narrator] Synthesizing '{item['id']}' with Google Gemini Human Voice ({GEMINI_VOICE})...")
+        try:
+            success = synthesize_with_gemini(item["text"], api_key, wav_path)
+        except Exception as e:
+            print(f"[Narrator] Gemini synthesis exception: {e}")
+            
+    if not success:
+        print(f"[Narrator] Using Edge-TTS Neural Voice ({EDGE_VOICE}) for '{item['id']}'...")
+        asyncio.run(synthesize_with_edge(item["text"], wav_path))
+        
+    dur = get_audio_duration(wav_path)
+    item["wav"] = wav_path
+    item["dur"] = dur
+    return item
 
 def build_ass_subtitles(events, output_ass):
-    """
-    Builds the ASS subtitle file with EXP 001-007 visual guidelines.
-    Safe-zone MarginV=390, PlayRes 1080x1920, yellow text with thick black outline.
-    """
     ass_content = [
         "[Script Info]",
         "Title: Expediente Policial Vertical Subtitles",
@@ -62,7 +131,6 @@ def build_ass_subtitles(events, output_ass):
         "[V4+ Styles]",
         "Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding",
         "Style: Narrator,Impact,48,&H0000FFFF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0.8,0,1,3.5,2.0,2,40,40,390,1",
-        "Style: Radio,Arial,42,&H00FF80FF,&H000000FF,&H00000000,&H90000000,-1,0,0,0,100,100,0.8,0,1,3.5,2.0,2,40,40,390,1",
         "",
         "[Events]",
         "Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text"
@@ -71,72 +139,73 @@ def build_ass_subtitles(events, output_ass):
     for start_t, end_t, style, text in events:
         st_str = sec_to_ass_time(start_t)
         en_str = sec_to_ass_time(end_t)
-        # Split text into chunks if too long
         ass_content.append(f"Dialogue: 0,{st_str},{en_str},{style},,0,0,0,,{text}")
         
     with open(output_ass, "w", encoding="utf-8") as f:
         f.write("\n".join(ass_content) + "\n")
-    print(f"[Narrator] Subtitle ASS file generated: {output_ass}")
+    print(f"[Narrator] ASS subtitles generated: {output_ass}")
 
 def process_narration(metadata, work_dir):
-    """
-    Synthesizes hook, context, and outro; positions them on timeline; mixes audio and generates ASS.
-    """
     os.makedirs(work_dir, exist_ok=True)
+    api_key = os.environ.get("GEMINI_API_KEY")
     slice_dur = metadata.get("slice_duration", 120)
     
-    items = [
-        {"id": "hook", "text": metadata.get("narration_hook", ""), "target": 1.0},
-        {"id": "context", "text": metadata.get("narration_context", ""), "target": min(35.0, slice_dur * 0.3)},
-        {"id": "outro", "text": metadata.get("narration_outro", ""), "target": None} # Set dynamically
-    ]
-    
-    print("[Narrator] Synthesizing Spanish neural narration...")
-    for item in items:
-        mp3_path = os.path.join(work_dir, f"{item['id']}.mp3")
-        wav_path = os.path.join(work_dir, f"{item['id']}.wav")
-        asyncio.run(synthesize_speech(item["text"], mp3_path))
-        convert_to_wav(mp3_path, wav_path)
-        item["wav"] = wav_path
-        item["dur"] = get_audio_duration(wav_path)
+    narr_list = metadata.get("narrations")
+    if not narr_list:
+        narr_list = [
+            {"id": "narr_01_hook", "target_time": 1.0, "text": "Una intervención policial que se tornó de alto riesgo."},
+            {"id": "narr_02_context", "target_time": 25.0, "text": "Los agentes recibieron una llamada de emergencia alertando sobre la presencia de un sospechoso armado."},
+            {"id": "narr_03_tension", "target_time": 55.0, "text": "A pesar de las órdenes reiteradas de detenerse, la situación continuó escalando rápidamente."},
+            {"id": "narr_04_action", "target_time": 85.0, "text": "Ante la amenaza directa a sus vidas, los oficiales se vieron forzados a actuar en legítima defensa."},
+            {"id": "narr_05_outro", "target_time": slice_dur - 12.0, "text": "Las investigaciones oficiales determinaron el uso justificado de la fuerza. Suscríbete a Expediente Policial."}
+        ]
         
-    # Calculate outro start
-    outro_dur = items[2]["dur"]
-    items[2]["target"] = max(items[1]["target"] + items[1]["dur"] + 2.0, slice_dur - outro_dur - 1.5)
+    print(f"[Narrator] Processing {len(narr_list)} voiceover interventions...")
+    processed_items = []
     
-    # Subtitle events
+    for item in narr_list:
+        p_item = synthesize_clip(item, api_key, work_dir)
+        processed_items.append(p_item)
+        
+    # Check timings and avoid overlaps
     events = []
-    for item in items:
-        st = item["target"]
-        en = st + item["dur"]
-        # Format text to wrap gracefully
+    current_time = 0.5
+    for item in processed_items:
+        target = item.get("target_time", current_time)
+        actual_start = max(target, current_time + 1.0)
+        # Ensure it doesn't exceed slice_dur
+        if actual_start + item["dur"] > slice_dur:
+            actual_start = max(1.0, slice_dur - item["dur"] - 1.0)
+            
+        actual_end = actual_start + item["dur"]
+        current_time = actual_end
+        item["actual_start"] = actual_start
+        item["actual_end"] = actual_end
+        
         words = item["text"].split()
-        if len(words) > 10:
+        if len(words) > 9:
             half = len(words) // 2
             formatted_text = " ".join(words[:half]) + "\\N" + " ".join(words[half:])
         else:
             formatted_text = item["text"]
             
-        events.append((st, en, "Narrator", formatted_text))
-        print(f"[Narrator] Voice segment '{item['id']}': {st:.1f}s -> {en:.1f}s ({item['dur']:.1f}s)")
+        events.append((actual_start, actual_end, "Narrator", formatted_text))
+        print(f"[Narrator] [{item['id']}] {actual_start:.1f}s -> {actual_end:.1f}s ({item['dur']:.1f}s): {item['text'][:45]}...")
         
     ass_path = os.path.join(work_dir, "subtitles.ass")
     build_ass_subtitles(events, ass_path)
     
-    # Generate audio mixing arguments or combined narration track
-    # We create an audio track with silence where there is no narration
-    # using FFmpeg amix or adelay
+    # Mix all narration tracks
     narration_mixed_wav = os.path.join(work_dir, "narration_track.wav")
-    
-    delays = [int(item["target"] * 1000) for item in items]
+    delays = [int(item["actual_start"] * 1000) for item in processed_items]
     inputs = []
     filter_parts = []
-    for i, item in enumerate(items):
+    for i, item in enumerate(processed_items):
         inputs.extend(["-i", item["wav"]])
         filter_parts.append(f"[{i}:a]adelay={delays[i]}|{delays[i]}[a{i}]")
-    
-    mix_str = "".join(f"[a{i}]" for i in range(len(items)))
-    filter_complex = f"{';'.join(filter_parts)};{mix_str}amix=inputs={len(items)}:normalize=0[aout]"
+        
+    mix_str = "".join(f"[a{i}]" for i in range(len(processed_items)))
+    filter_complex = f"{';'.join(filter_parts)};{mix_str}amix=inputs={len(processed_items)}:normalize=0[aout]"
     
     cmd = ["ffmpeg", "-y"] + inputs + [
         "-filter_complex", filter_complex,
@@ -145,21 +214,10 @@ def process_narration(metadata, work_dir):
         narration_mixed_wav
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-    print(f"[Narrator] Combined narration audio track ready: {narration_mixed_wav}")
+    print(f"[Narrator] All {len(processed_items)} interventions mixed into {narration_mixed_wav}")
     
     return {
         "ass_file": ass_path,
         "narration_wav": narration_mixed_wav,
-        "items": items
+        "items": processed_items
     }
-
-if __name__ == "__main__":
-    sample_meta = {
-        "narration_hook": "Una intervención de rutina que cambió de un segundo a otro en Greenville County.",
-        "narration_context": "Las cámaras policiales registraron el instante exacto en que los oficiales tuvieron que reaccionar bajo fuego directo.",
-        "narration_outro": "El oficial sobrevivió gracias a su chaleco táctico. Suscríbete a Expediente Policial.",
-        "slice_duration": 120
-    }
-    work = os.path.join(os.path.dirname(__file__), "..", "work_test")
-    res = process_narration(sample_meta, work)
-    print("Narration done:", res)

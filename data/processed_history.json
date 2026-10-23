@@ -18,6 +18,18 @@
     "facebook_video_id": "1660407425671570",
     "status": "published",
     "processed_at": "2026-10-21 20:59:10"
-
+  },
+  {
+    "case_code": "EXP_009",
+    "video_id": "dNYsRcfWeLU",
+    "original_title": "Deputies Shoot Armed Suspect Holding Estranged Wife at Gunpoint",
+    "spanish_title": "¡RESCATE DE REHÉN A PUNTA DE PISTOLA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.9/EXP_009_Short_Rescate_Rehen_Vertical.mp4",
+    "buffer_post_id": "6adaaa679ef33e7811ad1c76",
+    "instagram_reel_id": "18134274328660930",
+    "instagram_url": "https://www.instagram.com/reel/De0RdNbFFyo/",
+    "facebook_video_id": "1076363455451332",
+    "status": "published",
+    "processed_at": "2026-10-22 19:30:32"
   }
 ]

@@ -10,3 +10,9 @@ output/
 env/
 venv/
 .env
+cookies.txt
+build_*.py
+test_*.py
+check_*.py
+create_*.py
+publish_*.py

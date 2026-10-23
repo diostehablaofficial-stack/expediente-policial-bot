@@ -16,6 +16,29 @@ def determine_case_code(history_file):
             pass
     return f"EXP_{count+1:03d}"
 
+def clean_location(loc_raw):
+    """
+    Cleans up location string and ensures NO disclaimer or boilerplate is included.
+    """
+    l = re.sub(r"[\*\(\)\[\]\"\'\:\;]", "", loc_raw).strip()
+    if any(b in l.lower() for b in ["disclaimer", "warning", "note", "content", "educational", "intended", "purposes"]):
+        return "ESTADOS UNIDOS"
+        
+    translations = [
+        ("Greenville County, South Carolina", "Greenville, Carolina del Sur"),
+        ("South Carolina", "Carolina del Sur"),
+        ("North Carolina", "Carolina del Norte"),
+        ("New York", "Nueva York"),
+        ("New Mexico", "Nuevo México"),
+        ("County", "Condado de")
+    ]
+    for en, es in translations:
+        if en in l:
+            l = l.replace(en, es)
+            break
+
+    return l
+
 def clean_description(raw_desc):
     """
     Strips disclaimers, patreon links, and boilerplate to extract real case facts.
@@ -26,10 +49,11 @@ def clean_description(raw_desc):
         l_str = l.strip()
         if not l_str:
             continue
-        if any(bad in l_str.lower() for bad in ["disclaimer", "patreon", "support us", "educational purposes only", "subscribe"]):
+        if any(bad in l_str.lower() for bad in ["disclaimer", "patreon", "support us", "educational", "informational", "purposes only", "subscribe", "youtube"]):
             continue
         cleaned_lines.append(l_str)
     return "\n".join(cleaned_lines)
+
 
 def analyze_with_gemini(api_key, video_data):
     """
@@ -56,8 +80,9 @@ Descripción de los hechos:
 REQUISITOS ESTRICTOS:
 1. TODO el texto debe estar en ESPAÑOL neutro, dramático y periodístico.
 2. NUNCA incluyas palabras en inglés, avisos de disclaimer ni texto de Patreon.
-3. La voz en off (narrador) DEBE hacer entre 4 y 5 intervenciones a lo largo del video para mantener al espectador enganchado sin silencios largos.
+3. La voz en off (narrador) DEBE hacer entre 4 y 5 intervenciones clave y concisas, sincronizadas rigurosamente con los sucesos visuales que aparecen en pantalla en ese segundo exacto. No satures con demasiadas intervenciones: deja silencios para que se escuche el audio real de la cámara policial (sirenas, disparos, radio).
 4. Genera títulos y textos para el banner visual superior (HUD Card).
+5. Determina el segundo exacto donde ocurre la parte más crítica, peligrosa o de mayor acción del video ('teaser_start', ej: 25.0) para mostrarlo al inicio como un gancho de 3.5 segundos con el banner 'A CONTINUACIÓN...'.
 
 Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo las llaves):
 {{
@@ -67,31 +92,33 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
   "seo_description": "Descripción optimizada para YouTube con resumen del caso y hashtags (#Shorts #ExpedientePolicial #PoliceActivity #CasoReal #Policias)",
   "slice_start": 10,
   "slice_duration": {slice_dur},
+  "teaser_start": 25.0,
+  "teaser_duration": 3.5,
   "narrations": [
     {{
-      "id": "narr_01_hook",
+      "id": "narr_01_spot",
       "target_time": 1.0,
-      "text": "Frase de apertura de 1 o 2 oraciones para enganchar en los primeros 5 segundos."
+      "text": "Apertura concisa: ubicación, hora y lo que la cámara muestra al inicio."
     }},
     {{
-      "id": "narr_02_context",
+      "id": "narr_02_conflict",
+      "target_time": 8.5,
+      "text": "El estallido del conflicto o agresión que ocurre en este segundo."
+    }},
+    {{
+      "id": "narr_03_action",
       "target_time": 25.0,
-      "text": "Explicación del motivo del despacho policial y quién es el sospechoso."
+      "text": "La maniobra táctica o escape que la cámara muestra en este momento."
     }},
     {{
-      "id": "narr_03_tension",
-      "target_time": 55.0,
-      "text": "Descripción táctica del momento de mayor peligro o negativa a acatar órdenes."
-    }},
-    {{
-      "id": "narr_04_action",
-      "target_time": 85.0,
-      "text": "Análisis del desenlace armado o la respuesta defensiva de los oficiales."
+      "id": "narr_04_radio",
+      "target_time": 63.0,
+      "text": "La situación de tensión, cobertura o llamada de auxilio por radio."
     }},
     {{
       "id": "narr_05_outro",
-      "target_time": {slice_dur - 12},
-      "text": "Resultado de la investigación oficial y llamado a suscribirse a Expediente Policial."
+      "target_time": {max(105, slice_dur - 12)},
+      "text": "Desenlace final de la supervivencia y llamado a suscribirse a Expediente Policial."
     }}
   ]
 }}
@@ -103,6 +130,15 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
             text = re.sub(r"^```(?:json)?\n", "", text)
             text = re.sub(r"\n```$", "", text)
         data = json.loads(text)
+        # Validate teaser values
+        try:
+            t_start = float(data.get("teaser_start", 25.0))
+            if t_start < 0 or t_start > slice_dur - 4.0:
+                t_start = max(5.0, min(slice_dur - 5.0, 25.0))
+            data["teaser_start"] = t_start
+        except Exception:
+            data["teaser_start"] = 25.0
+        data["teaser_duration"] = 3.5
         return data
     except Exception as e:
         print(f"[Analyzer] Gemini analysis exception: {e}. Falling back to rule-based engine.")
@@ -119,10 +155,11 @@ def analyze_rule_based(video_data):
     
     # Extract location
     loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", desc)
-    location = loc_match.group(1).strip() if loc_match else "ESTADOS UNIDOS"
-    location = re.sub(r"[\*\(\)\[\]]", "", location).strip()
+    raw_loc = loc_match.group(1).strip() if loc_match else "ESTADOS UNIDOS"
+    location = clean_location(raw_loc)
     if len(location) > 35:
         location = location[:35].strip()
+
         
     badge_title = "INTERVENCIÓN POLICIAL DE ALTO RIESGO"
     if "shot" in title.lower() or "shootout" in title.lower():
@@ -148,22 +185,37 @@ def analyze_rule_based(video_data):
         },
         {
             "id": "narr_02_context",
-            "target_time": 25.0,
+            "target_time": 16.0,
             "text": "Los oficiales respondieron a la alerta sin imaginar el nivel de amenaza que estaban a punto de encontrar."
         },
         {
-            "id": "narr_03_tension",
-            "target_time": 55.0,
-            "text": "A pesar de las órdenes verbales repetidas, el sospechoso mantuvo una actitud desafiante."
+            "id": "narr_03_detect",
+            "target_time": 32.0,
+            "text": "Al llegar al punto señalado, divisan al sujeto en una actitud claramente hostil."
         },
         {
-            "id": "narr_04_action",
-            "target_time": 85.0,
-            "text": "Ante la agresión directa e inminente, los agentes tuvieron que recurrir a la fuerza defensiva."
+            "id": "narr_04_escalation",
+            "target_time": 48.0,
+            "text": "De imprevisto, la situación escala de forma crítica con una amenaza directa contra la vida del oficial."
         },
         {
-            "id": "narr_05_outro",
-            "target_time": max(100.0, slice_dur - 12.0),
+            "id": "narr_05_action",
+            "target_time": 64.0,
+            "text": "Bajo extrema presión, se despliega la maniobra defensiva y se buscan ángulos de cobertura."
+        },
+        {
+            "id": "narr_06_tension",
+            "target_time": 80.0,
+            "text": "El agente reporta de inmediato el estado de emergencia para coordinar la llegada de unidades tácticas."
+        },
+        {
+            "id": "narr_07_backup",
+            "target_time": 96.0,
+            "text": "Las patrullas de apoyo aseguran el perímetro y neutralizan el foco de peligro."
+        },
+        {
+            "id": "narr_08_outro",
+            "target_time": max(106.0, slice_dur - 12.0),
             "text": "Las investigaciones oficiales determinaron el uso justificado de la fuerza. Suscríbete a Expediente Policial."
         }
     ]
@@ -185,6 +237,8 @@ Suscríbete a Expediente Policial para seguir descubriendo los procedimientos fo
         "seo_description": seo_description,
         "slice_start": 10 if duration > 140 else 0,
         "slice_duration": slice_dur,
+        "teaser_start": 25.0 if slice_dur > 35 else 5.0,
+        "teaser_duration": 3.5,
         "narrations": narrations
     }
 

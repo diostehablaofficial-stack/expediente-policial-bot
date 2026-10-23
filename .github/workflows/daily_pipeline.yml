@@ -36,10 +36,10 @@ jobs:
           sleep 5
           curl -I http://127.0.0.1:4416/ || echo "PO Token server booting"
 
-      - name: Install FFmpeg
+      - name: Install FFmpeg & Fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg fonts-liberation fonts-dejavu-core
 
       - name: Install Python Dependencies
         run: |

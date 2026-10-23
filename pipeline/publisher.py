@@ -82,11 +82,11 @@ def get_public_video_url(file_path, case_code):
     # Fallback to high-speed public CDN
     return upload_to_temp_sh(file_path)
 
-def publish_to_buffer_youtube(video_url, title, description, channel_id, token, mode="addToQueue"):
+def publish_to_buffer_youtube(video_url, title, description, channel_id, token, mode="shareNow"):
     """
-    Publishes / queues YouTube Short via Buffer GraphQL API.
+    Publishes YouTube Short immediately via Buffer GraphQL API (mode="shareNow").
     """
-    print(f"[Publisher] Sending video to Buffer GraphQL API (Channel: {channel_id})...")
+    print(f"[Publisher] Sending video to Buffer GraphQL API (Channel: {channel_id}, Mode: {mode})...")
     endpoint = "https://api.buffer.com"
     headers = {
         "Authorization": f"Bearer {token}",
@@ -143,7 +143,6 @@ def publish_to_buffer_youtube(video_url, title, description, channel_id, token, 
                     "madeForKids": False
                 }
             }
-
         }
     }
     
@@ -157,8 +156,33 @@ def publish_to_buffer_youtube(video_url, title, description, channel_id, token, 
     if "post" in post_result:
         post_id = post_result["post"]["id"]
         status = post_result["post"]["status"]
-        print(f"[Publisher] Buffer Post created successfully! ID: {post_id}, Status: {status}")
-        return post_result
+        print(f"[Publisher] Buffer Post created successfully! ID: {post_id}, Initial Status: {status}")
+        
+        # Poll for live YouTube Shorts URL
+        youtube_url = None
+        for attempt in range(8):
+            time.sleep(5)
+            try:
+                q = f"""query {{ post(input: {{ id: "{post_id}" }}) {{ id status sentAt externalLink error {{ message }} }} }}"""
+                qr = requests.post(endpoint, headers=headers, json={"query": q}, timeout=15).json()
+                p = qr.get("data", {}).get("post", {})
+                if p.get("externalLink"):
+                    youtube_url = p.get("externalLink")
+                    status = p.get("status", status)
+                    print(f"[Publisher] YouTube Short LIVE URL confirmed: {youtube_url}")
+                    break
+                elif p.get("status") == "sent":
+                    status = "sent"
+                    print("[Publisher] Buffer post marked as 'sent' to YouTube.")
+                    break
+            except Exception as e:
+                pass
+                
+        return {
+            "post_id": post_id,
+            "status": status,
+            "youtube_url": youtube_url
+        }
     else:
         raise RuntimeError(f"Buffer API Error response: {post_result}")
 
@@ -166,7 +190,12 @@ def publish_to_meta(video_url, caption, access_token, ig_user_id=None, fb_page_i
     """
     Publishes to Instagram Reels and Facebook Page via Meta Graph API.
     """
-    results = {}
+    results = {
+        "instagram_reel_id": None,
+        "instagram_url": None,
+        "facebook_video_id": None,
+        "facebook_url": None
+    }
     # Instagram Reels
     if ig_user_id:
         print(f"[Publisher] Creating Instagram Reel container for user {ig_user_id}...")
@@ -182,8 +211,8 @@ def publish_to_meta(video_url, caption, access_token, ig_user_id=None, fb_page_i
             container_id = r.json().get("id")
             print(f"[Publisher] Instagram container created: {container_id}. Waiting for processing...")
             # Poll status
-            for _ in range(20):
-                time.sleep(10)
+            for _ in range(25):
+                time.sleep(8)
                 status_url = f"https://graph.facebook.com/v21.0/{container_id}?fields=status_code&access_token={access_token}"
                 s_res = requests.get(status_url).json()
                 status = s_res.get("status_code")
@@ -191,8 +220,19 @@ def publish_to_meta(video_url, caption, access_token, ig_user_id=None, fb_page_i
                     # Publish
                     pub_url = f"https://graph.facebook.com/v21.0/{ig_user_id}/media_publish"
                     p_res = requests.post(pub_url, data={"creation_id": container_id, "access_token": access_token}).json()
-                    results["instagram"] = p_res
-                    print(f"[Publisher] Instagram Reel published! ID: {p_res.get('id')}")
+                    ig_id = p_res.get("id")
+                    results["instagram_reel_id"] = ig_id
+                    
+                    # Fetch permalink
+                    try:
+                        perm_url = f"https://graph.facebook.com/v21.0/{ig_id}?fields=permalink&access_token={access_token}"
+                        perm_res = requests.get(perm_url, timeout=15).json()
+                        permalink = perm_res.get("permalink", f"https://www.instagram.com/reel/{ig_id}/")
+                    except Exception:
+                        permalink = f"https://www.instagram.com/reel/{ig_id}/"
+                        
+                    results["instagram_url"] = permalink
+                    print(f"[Publisher] Instagram Reel published! ID: {ig_id} -> {permalink}")
                     break
                 elif status == "ERROR":
                     print(f"[Publisher] Instagram video processing error: {s_res}")
@@ -209,18 +249,24 @@ def publish_to_meta(video_url, caption, access_token, ig_user_id=None, fb_page_i
             "description": caption,
             "access_token": access_token
         }
-        r_fb = requests.post(fb_url, data=fb_params, timeout=30)
-        results["facebook"] = r_fb.json()
-        print(f"[Publisher] Facebook video response: {r_fb.json()}")
+        r_fb = requests.post(fb_url, data=fb_params, timeout=45)
+        if r_fb.status_code == 200:
+            fb_vid_id = r_fb.json().get("id")
+            fb_link = f"https://www.facebook.com/{fb_vid_id}"
+            results["facebook_video_id"] = fb_vid_id
+            results["facebook_url"] = fb_link
+            print(f"[Publisher] Facebook video published: {fb_link}")
+        else:
+            print(f"[Publisher] Facebook upload notice: {r_fb.status_code} - {r_fb.text}")
 
     return results
 
 def publish_case(video_file, metadata):
     """
     Main publisher coordinator:
-    1. Uploads video to high-speed public CDN / release.
-    2. Publishes to YouTube via Buffer.
-    3. Publishes to Meta (Instagram/Facebook) if token is configured.
+    1. Uploads video to high-speed public CDN / GitHub release.
+    2. Publishes to YouTube Shorts via Buffer (mode="shareNow").
+    3. Publishes to Meta (Instagram Reels / Facebook Page).
     """
     case_code = metadata.get("case_code", "EXP_CASE")
     title = metadata.get("spanish_title", "Expediente Policial")
@@ -229,13 +275,25 @@ def publish_case(video_file, metadata):
     # 1. Get public URL
     video_url = get_public_video_url(video_file, case_code)
     
+    pub_info = {
+        "video_url": video_url,
+        "youtube_url": None,
+        "buffer_post_id": None,
+        "instagram_reel_id": None,
+        "instagram_url": None,
+        "facebook_video_id": None,
+        "facebook_url": None
+    }
+    
     # 2. Buffer YouTube
     buf_token = os.environ.get("BUFFER_TOKEN")
     buf_channel = os.environ.get("BUFFER_CHANNEL_ID")
     
     if buf_token and buf_channel:
         try:
-            publish_to_buffer_youtube(video_url, title, desc, buf_channel, buf_token)
+            buf_res = publish_to_buffer_youtube(video_url, title, desc, buf_channel, buf_token, mode="shareNow")
+            pub_info["buffer_post_id"] = buf_res.get("post_id")
+            pub_info["youtube_url"] = buf_res.get("youtube_url")
         except Exception as e:
             print(f"[Publisher] Buffer publishing failed: {e}")
             raise
@@ -249,10 +307,11 @@ def publish_case(video_file, metadata):
     
     if meta_token and (ig_id or fb_id):
         try:
-            publish_to_meta(video_url, desc, meta_token, ig_user_id=ig_id, fb_page_id=fb_id)
+            meta_res = publish_to_meta(video_url, desc, meta_token, ig_user_id=ig_id, fb_page_id=fb_id)
+            pub_info.update(meta_res)
         except Exception as e:
             print(f"[Publisher] Meta publishing error: {e}")
     else:
         print("[Publisher] META_ACCESS_TOKEN not configured yet. (Staged for Meta upload when token is provided).")
 
-    return video_url
+    return pub_info

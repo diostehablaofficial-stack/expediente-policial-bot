@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import time
 import base64
 import requests
 import subprocess
@@ -39,10 +40,11 @@ def get_audio_duration(file_path):
 def synthesize_with_gemini(text, api_key, output_wav):
     """
     Uses Google Gemini 3.8 Flash TTS for ultra-realistic, human voice synthesis.
+    Includes retry logic and rate-limit handling.
     """
     url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_TTS_MODEL}:generateContent?key={api_key}"
     payload = {
-        "contents": [{"parts": [{"text": f"Narra con tono serio, humano, documental y dramático de True Crime: {text}"}]}],
+        "contents": [{"parts": [{"text": text}]}],
         "generationConfig": {
             "responseModalities": ["AUDIO"],
             "speechConfig": {
@@ -55,30 +57,42 @@ def synthesize_with_gemini(text, api_key, output_wav):
         }
     }
     
-    r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=20)
-    if r.status_code == 200:
-        res = r.json()
-        b64_data = res["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
-        raw_bytes = base64.b64decode(b64_data)
-        
-        # Write temporary raw file and convert with ffmpeg to standard 48kHz stereo WAV
-        tmp_raw = output_wav + ".tmp"
-        with open(tmp_raw, "wb") as f:
-            f.write(raw_bytes)
+    for attempt in range(1, 4):
+        try:
+            r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=25)
+            if r.status_code == 200:
+                res = r.json()
+                b64_data = res["candidates"][0]["content"]["parts"][0]["inlineData"]["data"]
+                raw_bytes = base64.b64decode(b64_data)
+                
+                # Write temporary raw file and convert with ffmpeg to standard 48kHz stereo WAV
+                tmp_raw = output_wav + ".tmp"
+                with open(tmp_raw, "wb") as f:
+                    f.write(raw_bytes)
+                    
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", tmp_raw,
+                    "-ar", "48000", "-ac", "2",
+                    output_wav
+                ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
+                
+                if os.path.exists(tmp_raw):
+                    os.remove(tmp_raw)
+                    
+                time.sleep(2.5) # Prevent RPM rate limits
+                return True
+            elif r.status_code == 429:
+                wait_t = attempt * 4
+                print(f"[Narrator] Gemini rate limit 429. Waiting {wait_t}s...")
+                time.sleep(wait_t)
+            else:
+                print(f"[Narrator] Gemini error {r.status_code}: {r.text[:120]}")
+                time.sleep(2)
+        except Exception as e:
+            print(f"[Narrator] Gemini exception: {e}")
+            time.sleep(2)
             
-        subprocess.run([
-            "ffmpeg", "-y", "-i", tmp_raw,
-            "-ar", "48000", "-ac", "2",
-            output_wav
-        ], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=True)
-        
-        if os.path.exists(tmp_raw):
-            os.remove(tmp_raw)
-            
-        return True
-    else:
-        print(f"[Narrator] Gemini TTS error {r.status_code}: {r.text[:200]}")
-        return False
+    return False
 
 async def synthesize_with_edge(text, output_wav):
     """

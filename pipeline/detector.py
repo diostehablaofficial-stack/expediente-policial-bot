@@ -1,8 +1,15 @@
 import json
 import os
+import sys
 import subprocess
 import requests
 import xml.etree.ElementTree as ET
+
+if sys.stdout.encoding != 'utf-8':
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
 
 CHANNEL_URL = "https://www.youtube.com/@PoliceActivity/videos"
 CHANNEL_ID = "UCXMYxKMh3prxnM_4kYZuB3g"

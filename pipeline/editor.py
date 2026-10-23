@@ -58,6 +58,29 @@ def generate_header_card(badge_sub, badge_title, output_png, fonts_dir):
     header_img.save(output_png)
     print(f"[Editor] Header card PNG created: {output_png}")
 
+def generate_teaser_pill(output_png, fonts_dir):
+    """
+    Generates high-impact cold open teaser badge: 'A CONTINUACIÓN...'
+    """
+    impact_path = find_font("Impact.ttf", fonts_dir)
+    arial_path = find_font("ariblk.ttf", fonts_dir) or find_font("arialbd.ttf", fonts_dir)
+    try:
+        font_sub = ImageFont.truetype(arial_path, 26) if arial_path else ImageFont.load_default()
+        font_title = ImageFont.truetype(impact_path, 74) if impact_path else ImageFont.load_default()
+    except Exception as e:
+        print(f"[Editor] Font load warning in teaser: {e}. Using default.")
+        font_sub = ImageFont.load_default()
+        font_title = ImageFont.load_default()
+
+    img = Image.new("RGBA", (1000, 180), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.rounded_rectangle([0, 0, 1000, 180], radius=20, fill=(15, 20, 28, 245), outline=(220, 38, 38, 255), width=4)
+    draw.ellipse([34, 28, 62, 56], fill=(239, 68, 68, 255))
+    draw.text((78, 24), "ANTICIPO EXCLUSIVO | CASO REAL", font=font_sub, fill=(255, 255, 255, 255))
+    draw.text((34, 72), "A CONTINUACIÓN...", font=font_title, fill=(255, 230, 0, 255))
+    img.save(output_png)
+    print(f"[Editor] Teaser pill generated: {output_png}")
+
 def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     """
     Uses yt-dlp to download the high-quality 1080p segment directly.
@@ -121,9 +144,11 @@ def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_d
         "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe];"
         "[vframe][1:v]overlay=40:320[vhead];"
         f"[vhead]ass='{ass_escaped}':fontsdir='{fonts_escaped}'[vout];"
-        "[0:a]volume=0.85[a_bg];"
-        "[2:a]volume=1.40[a_narr];"
-        "[a_bg][a_narr]amix=inputs=2:duration=first:dropout_transition=2[aout]"
+        "[0:a]volume=0.60[bg_pre];"
+        "[2:a]asplit=2[sc_in][narr_main];"
+        "[bg_pre][sc_in]sidechaincompress=threshold=0.025:ratio=14:attack=40:release=400:mix=1[bg_ducked];"
+        "[narr_main]volume=1.60[narr_loud];"
+        "[bg_ducked][narr_loud]amix=inputs=2:duration=first:dropout_transition=2[aout]"
     )
     
     cmd = [
@@ -143,4 +168,42 @@ def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_d
     subprocess.run(cmd, check=True)
     size_mb = os.path.getsize(output_mp4) / (1024 * 1024)
     print(f"[Editor] Render complete! Saved to {output_mp4} ({size_mb:.2f} MB)")
+    return output_mp4
+
+def render_teaser_and_concat(raw_clip, teaser_start, teaser_duration, teaser_pill_png, main_mp4, output_mp4, work_dir):
+    """
+    Renders Cold Open Teaser with 'A CONTINUACIÓN...' and joins it seamlessly before the main video.
+    """
+    teaser_segment = os.path.join(work_dir, "teaser_segment.mp4")
+    filter_complex = (
+        "[0:v]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920:flags=lanczos[bg];"
+        "[0:v]scale=1080:608[fg];"
+        "[bg][fg]overlay=0:656[vbase];"
+        "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe];"
+        "[vframe][1:v]overlay=40:320[vout]"
+    )
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", str(teaser_start),
+        "-t", str(teaser_duration),
+        "-i", raw_clip,
+        "-i", teaser_pill_png,
+        "-filter_complex", filter_complex,
+        "-map", "[vout]",
+        "-map", "0:a",
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+        "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
+        teaser_segment
+    ]
+    subprocess.run(cmd, check=True)
+    
+    concat_txt = os.path.join(work_dir, "concat_final.txt")
+    with open(concat_txt, "w", encoding="utf-8") as f:
+        f.write("file '" + teaser_segment.replace("\\", "/") + "'\n")
+        f.write("file '" + main_mp4.replace("\\", "/") + "'\n")
+        
+    cmd_cat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_txt, "-c", "copy", "-movflags", "+faststart", output_mp4]
+    subprocess.run(cmd_cat, check=True)
+    size_mb = os.path.getsize(output_mp4) / (1024 * 1024)
+    print(f"[Editor] Master Short with Teaser generated: {output_mp4} ({size_mb:.2f} MB)")
     return output_mp4

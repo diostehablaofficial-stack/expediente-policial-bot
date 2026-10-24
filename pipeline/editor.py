@@ -205,9 +205,11 @@ def render_teaser_and_concat(raw_clip, teaser_start, teaser_duration, teaser_pil
     subprocess.run(cmd, check=True)
     
     concat_txt = os.path.join(work_dir, "concat_final.txt")
+    abs_teaser = os.path.abspath(teaser_segment).replace("\\", "/")
+    abs_main = os.path.abspath(main_mp4).replace("\\", "/")
     with open(concat_txt, "w", encoding="utf-8") as f:
-        f.write("file '" + teaser_segment.replace("\\", "/") + "'\n")
-        f.write("file '" + main_mp4.replace("\\", "/") + "'\n")
+        f.write(f"file '{abs_teaser}'\n")
+        f.write(f"file '{abs_main}'\n")
         
     cmd_cat = ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", concat_txt, "-c", "copy", "-movflags", "+faststart", output_mp4]
     subprocess.run(cmd_cat, check=True)

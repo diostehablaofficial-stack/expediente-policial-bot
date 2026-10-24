@@ -59,40 +59,76 @@ def clean_description(raw_desc):
 def analyze_with_gemini(api_key, video_data):
     """
     Uses Gemini API to extract 100% Spanish high-impact True Crime script,
-    with multiple narrator interventions across the timeline.
+    with intelligent climax detection and visual-narrative synchronization.
     """
     clean_desc = clean_description(video_data.get("description", ""))
-    duration = video_data.get("duration", 180)
-    
-    # Check if there is a 911 call or bodycam chapter offset
+    duration = int(video_data.get("duration", 180))
     chapters = video_data.get("chapters", [])
+    
+    # Analyze chapters to locate bodycam and probable climax
     bodycam_offset = 0
+    climax_hint = None
+    chapters_formatted = []
+    
     for ch in chapters:
-        t = ch.get("title", "").lower()
-        if any(k in t for k in ["bodycam", "dashcam", "officer", "shooting", "chase"]):
-            bodycam_offset = int(ch.get("start_time", 0))
-            break
-            
-    rem_dur = duration - bodycam_offset
-    slice_dur = min(rem_dur if rem_dur > 30 else duration, 120)
-    suggested_start = bodycam_offset if bodycam_offset > 0 else (10 if duration > 140 else 0)
+        t = ch.get("title", "")
+        st = int(ch.get("start_time", 0))
+        chapters_formatted.append(f"- {st}s ({st//60}:{st%60:02d}): {t}")
+        t_lower = t.lower()
+        if bodycam_offset == 0 and any(k in t_lower for k in ["bodycam", "dashcam", "officer"]):
+            bodycam_offset = st
+        if any(k in t_lower for k in ["shoot", "fire", "shots", "attack", "confront", "k9", "flame", "lethal"]):
+            if climax_hint is None or st > climax_hint:
+                climax_hint = st
+                
+    chapters_text = "\n".join(chapters_formatted) if chapters_formatted else "Sin marcas de capítulo en el video original."
+    
+    # Calculate recommended slice
+    if duration <= 125:
+        suggested_start = bodycam_offset if bodycam_offset > 0 else 0
+        slice_dur = min(duration - suggested_start, 115)
+    else:
+        # Long video: place the climax around second 70-85 of the slice
+        if climax_hint and climax_hint > 45:
+            suggested_start = max(0, climax_hint - 70)
+        else:
+            # Climax usually happens towards the second half of the incident
+            suggested_start = max(bodycam_offset, duration - 125)
+        slice_dur = min(115, duration - suggested_start)
     
     prompt = f"""
 Eres el director y guionista principal de 'Expediente Policial' (canal de documentales True Crime forense en español).
 Analiza los metadatos de esta grabación de cámara policial real (PoliceActivity):
 
 Título original: {video_data.get('title')}
-Duración estimada del Short: {slice_dur} segundos
+Duración total del video fuente: {duration} segundos
+Capítulos del video:
+{chapters_text}
+
 Descripción de los hechos:
 {clean_desc[:3000]}
 
-REQUISITOS ESTRICTOS:
-1. TODO el texto debe estar en ESPAÑOL neutro, dramático y periodístico.
-2. NUNCA incluyas palabras en inglés, avisos de disclaimer ni texto de Patreon.
-3. La voz en off (narrador) DEBE hacer entre 4 y 5 intervenciones clave y concisas, sincronizadas rigurosamente con los sucesos visuales que aparecen en pantalla en ese segundo exacto. No satures con demasiadas intervenciones: deja silencios para que se escuche el audio real de la cámara policial (sirenas, disparos, radio).
-4. Genera títulos y textos para el banner visual superior (HUD Card).
-5. Determina el segundo exacto donde ocurre la parte más crítica, peligrosa o de mayor acción del video ('teaser_start', ej: 25.0) para mostrarlo al inicio como un gancho de 3.5 segundos con el banner 'A CONTINUACIÓN...'.
-6. 'slice_start' debe ser el segundo donde comienza la acción visual en vivo de la cámara policial (mínimo {suggested_start}s para omitir llamadas de audio 911 o mapas iniciales).
+REGLAS CRÍTICAS DE MONTAJE Y NARRACIÓN (EVITAR VIDEOS MOCHOS Y DESINCRONIZADOS):
+1. SELECCIÓN DEL CORTE ('slice_start' y 'slice_duration'):
+   - El Short final debe durar entre 95 y 118 segundos.
+   - NUNCA cortes el video antes de que ocurra el desenlace o la acción principal ("video mocho"). Los videos policiales suelen tener minutos de diálogo o aproximación antes del enfrentamiento culminante.
+   - Identifica en qué segundo exacto ocurre el CLÍMAX (el tiroteo, ataque armado, despliegue de fuerza o resolución crítica).
+   - Ajusta 'slice_start' (segundo inicial del corte en el video fuente) de modo que el clímax quede situado aproximadamente entre el segundo 60 y 90 del corte, precedido por la tensión previa, y seguido por el desenlace y atención médica/esposamiento final.
+   - 'slice_duration' debe ser máximo 118 segundos (para que sumado a los 3.5s del gancho inicial no supere los 120s reglamentarios).
+   - Sugerencia calculada: slice_start={suggested_start}, slice_duration={slice_dur}.
+
+2. SINCRONIZACIÓN VISUAL ESTRICTA ('narrations'):
+   - Cada intervención de la voz en off DEBE coincidir con EXACTITUD con lo que la cámara está mostrando en la pantalla en ese segundo relativo del Short (target_time).
+   - Entre 4 y 5 intervenciones concisas, dejando silencios tácticos para que se escuche el audio real (gritos, órdenes, sirenas, detonaciones).
+   - target_time=1.0: Lo que se ve al inicio del corte (ej. oficiales rodeando el lugar, patrulla llegando).
+   - target_time intermedio: La escalada o despliegue en ese segundo específico.
+   - target_time en el clímax: La detonación, fuego o neutralización que la cámara capta en ese instante exacto.
+   - target_time final: El aseguramiento de la escena y resolución.
+   - PROHIBIDO narrar sucesos antes de que aparezcan en pantalla o que no ocurran en este corte.
+
+3. ESTILO Y FORMATO:
+   - 100% ESPAÑOL neutro, dramático y periodístico. Cero palabras en inglés, cero disclaimers o texto de Patreon.
+   - 'teaser_start': Segundo relativo dentro del corte (ej. 75.0) donde ocurre el clímax más impactante para usarlo como gancho de 3.5 segundos con el banner 'A CONTINUACIÓN...'.
 
 Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo las llaves):
 {{
@@ -108,27 +144,27 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
     {{
       "id": "narr_01_spot",
       "target_time": 1.0,
-      "text": "Apertura concisa: ubicación, hora y lo que la cámara muestra al inicio."
+      "text": "Apertura concisa: ubicación y lo que la cámara muestra al inicio del corte."
     }},
     {{
       "id": "narr_02_conflict",
-      "target_time": 8.5,
-      "text": "El estallido del conflicto o agresión que ocurre en este segundo."
+      "target_time": 18.0,
+      "text": "Lo que la cámara enfoca en este segundo durante la aproximación."
     }},
     {{
       "id": "narr_03_action",
-      "target_time": 25.0,
-      "text": "La maniobra táctica o escape que la cámara muestra en este momento."
+      "target_time": 50.0,
+      "text": "El momento de tensión o ingreso que se visualiza aquí."
     }},
     {{
-      "id": "narr_04_radio",
-      "target_time": 63.0,
-      "text": "La situación de tensión, cobertura o llamada de auxilio por radio."
+      "id": "narr_04_climax",
+      "target_time": 80.0,
+      "text": "El clímax, agresión o disparo que la cámara enfoca en este segundo."
     }},
     {{
-      "id": "narr_05_outro",
-      "target_time": {max(105, slice_dur - 12)},
-      "text": "Desenlace final de la supervivencia y llamado a suscribirse a Expediente Policial."
+      "id": "narr_05_resolution",
+      "target_time": {max(95, slice_dur - 12)},
+      "text": "Aseguramiento de la escena y llamado a suscribirse a Expediente Policial."
     }}
   ]
 }}
@@ -176,24 +212,35 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
 
 def analyze_rule_based(video_data):
     """
-    Robust fallback analyzer when Gemini is unavailable.
+    Robust fallback analyzer with intelligent climax detection when Gemini is unavailable.
     """
     title = video_data.get("title", "Intervención Policial de Alto Riesgo")
     desc = clean_description(video_data.get("description", ""))
-    duration = video_data.get("duration", 180)
-    
-    # Check if there is a 911 call or bodycam chapter offset
+    duration = int(video_data.get("duration", 180))
     chapters = video_data.get("chapters", [])
+    
+    # Analyze chapters to locate bodycam and climax
     bodycam_offset = 0
+    climax_hint = None
     for ch in chapters:
         t = ch.get("title", "").lower()
-        if any(k in t for k in ["bodycam", "dashcam", "officer", "shooting", "chase"]):
-            bodycam_offset = int(ch.get("start_time", 0))
-            break
-            
-    rem_dur = duration - bodycam_offset
-    slice_dur = min(rem_dur if rem_dur > 30 else duration, 120)
-    slice_start = bodycam_offset if bodycam_offset > 0 else (10 if duration > 140 else 0)
+        st = int(ch.get("start_time", 0))
+        if bodycam_offset == 0 and any(k in t for k in ["bodycam", "dashcam", "officer"]):
+            bodycam_offset = st
+        if any(k in t for k in ["shoot", "fire", "shots", "attack", "confront", "k9", "flame", "lethal"]):
+            if climax_hint is None or st > climax_hint:
+                climax_hint = st
+                
+    if duration <= 125:
+        slice_start = bodycam_offset if bodycam_offset > 0 else 0
+        slice_dur = min(duration - slice_start, 115)
+    else:
+        # Long video: place climax around second 70-85 of the slice
+        if climax_hint and climax_hint > 45:
+            slice_start = max(0, climax_hint - 70)
+        else:
+            slice_start = max(bodycam_offset, duration - 125)
+        slice_dur = min(115, duration - slice_start)
     
     # Extract location
     loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", desc)

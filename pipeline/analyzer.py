@@ -1,6 +1,7 @@
 import os
 import re
 import json
+import requests
 
 def determine_case_code(history_file):
     """
@@ -60,13 +61,21 @@ def analyze_with_gemini(api_key, video_data):
     Uses Gemini API to extract 100% Spanish high-impact True Crime script,
     with multiple narrator interventions across the timeline.
     """
-    import google.generativeai as genai
-    genai.configure(api_key=api_key)
-    model = genai.GenerativeModel("gemini-2.5-flash")
-    
     clean_desc = clean_description(video_data.get("description", ""))
     duration = video_data.get("duration", 180)
-    slice_dur = min(duration, 125)
+    
+    # Check if there is a 911 call or bodycam chapter offset
+    chapters = video_data.get("chapters", [])
+    bodycam_offset = 0
+    for ch in chapters:
+        t = ch.get("title", "").lower()
+        if any(k in t for k in ["bodycam", "dashcam", "officer", "shooting", "chase"]):
+            bodycam_offset = int(ch.get("start_time", 0))
+            break
+            
+    rem_dur = duration - bodycam_offset
+    slice_dur = min(rem_dur if rem_dur > 30 else duration, 120)
+    suggested_start = bodycam_offset if bodycam_offset > 0 else (10 if duration > 140 else 0)
     
     prompt = f"""
 Eres el director y guionista principal de 'Expediente Policial' (canal de documentales True Crime forense en español).
@@ -83,6 +92,7 @@ REQUISITOS ESTRICTOS:
 3. La voz en off (narrador) DEBE hacer entre 4 y 5 intervenciones clave y concisas, sincronizadas rigurosamente con los sucesos visuales que aparecen en pantalla en ese segundo exacto. No satures con demasiadas intervenciones: deja silencios para que se escuche el audio real de la cámara policial (sirenas, disparos, radio).
 4. Genera títulos y textos para el banner visual superior (HUD Card).
 5. Determina el segundo exacto donde ocurre la parte más crítica, peligrosa o de mayor acción del video ('teaser_start', ej: 25.0) para mostrarlo al inicio como un gancho de 3.5 segundos con el banner 'A CONTINUACIÓN...'.
+6. 'slice_start' debe ser el segundo donde comienza la acción visual en vivo de la cámara policial (mínimo {suggested_start}s para omitir llamadas de audio 911 o mapas iniciales).
 
 Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo las llaves):
 {{
@@ -90,7 +100,7 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
   "badge_sub": "Texto secundario del banner, ej: CASO REAL | POLICÍA DE GREENVILLE (máx 40 caracteres, 100% español)",
   "badge_title": "Titular principal del banner en mayúsculas, ej: OFICIAL HERIDO EN EMBOSCADA (máx 35 caracteres, 100% español)",
   "seo_description": "Descripción optimizada para YouTube con resumen del caso y hashtags (#Shorts #ExpedientePolicial #PoliceActivity #CasoReal #Policias)",
-  "slice_start": 10,
+  "slice_start": {suggested_start},
   "slice_duration": {slice_dur},
   "teaser_start": 25.0,
   "teaser_duration": 3.5,
@@ -123,26 +133,46 @@ Devuelve EXCLUSIVAMENTE un JSON válido (sin backticks de markdown ```json, solo
   ]
 }}
 """
-    try:
-        response = model.generate_content(prompt)
-        text = response.text.strip()
-        if text.startswith("```"):
-            text = re.sub(r"^```(?:json)?\n", "", text)
-            text = re.sub(r"\n```$", "", text)
-        data = json.loads(text)
-        # Validate teaser values
+    models_to_try = ["gemini-3.5-flash", "gemini-3.6-flash", "gemini-3.8-flash"]
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.4
+        }
+    }
+    
+    for mod in models_to_try:
         try:
-            t_start = float(data.get("teaser_start", 25.0))
-            if t_start < 0 or t_start > slice_dur - 4.0:
-                t_start = max(5.0, min(slice_dur - 5.0, 25.0))
-            data["teaser_start"] = t_start
-        except Exception:
-            data["teaser_start"] = 25.0
-        data["teaser_duration"] = 3.5
-        return data
-    except Exception as e:
-        print(f"[Analyzer] Gemini analysis exception: {e}. Falling back to rule-based engine.")
-        return None
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={api_key}"
+            r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=30)
+            if r.status_code == 200:
+                res = r.json()
+                text = res["candidates"][0]["content"]["parts"][0]["text"].strip()
+                if text.startswith("```"):
+                    text = re.sub(r"^```(?:json)?\n", "", text)
+                    text = re.sub(r"\n```$", "", text)
+                data = json.loads(text)
+                # Validate teaser and slice values
+                try:
+                    t_start = float(data.get("teaser_start", 25.0))
+                    s_start = float(data.get("slice_start", suggested_start))
+                    if t_start >= s_start and t_start < duration:
+                        t_start = t_start - s_start
+                    if t_start < 0 or t_start > slice_dur - 4.0:
+                        t_start = max(5.0, min(slice_dur - 5.0, 25.0))
+                    data["teaser_start"] = t_start
+                except Exception:
+                    data["teaser_start"] = 25.0
+                data["teaser_duration"] = 3.5
+                print(f"[Analyzer] Successfully generated metadata with {mod}!")
+                return data
+            else:
+                print(f"[Analyzer] Model {mod} returned {r.status_code}. Trying next fallback...")
+        except Exception as e:
+            print(f"[Analyzer] Exception with {mod}: {e}. Trying next fallback...")
+
+    print("[Analyzer] All Gemini models failed. Falling back to rule-based engine.")
+    return None
 
 def analyze_rule_based(video_data):
     """
@@ -151,7 +181,19 @@ def analyze_rule_based(video_data):
     title = video_data.get("title", "Intervención Policial de Alto Riesgo")
     desc = clean_description(video_data.get("description", ""))
     duration = video_data.get("duration", 180)
-    slice_dur = min(duration, 125)
+    
+    # Check if there is a 911 call or bodycam chapter offset
+    chapters = video_data.get("chapters", [])
+    bodycam_offset = 0
+    for ch in chapters:
+        t = ch.get("title", "").lower()
+        if any(k in t for k in ["bodycam", "dashcam", "officer", "shooting", "chase"]):
+            bodycam_offset = int(ch.get("start_time", 0))
+            break
+            
+    rem_dur = duration - bodycam_offset
+    slice_dur = min(rem_dur if rem_dur > 30 else duration, 120)
+    slice_start = bodycam_offset if bodycam_offset > 0 else (10 if duration > 140 else 0)
     
     # Extract location
     loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", desc)
@@ -184,38 +226,23 @@ def analyze_rule_based(video_data):
             "text": f"Una intervención que cambió en segundos en {location}."
         },
         {
-            "id": "narr_02_context",
+            "id": "narr_02_conflict",
             "target_time": 16.0,
-            "text": "Los oficiales respondieron a la alerta sin imaginar el nivel de amenaza que estaban a punto de encontrar."
+            "text": "Los oficiales inician la persecución al ver que el sospechoso ignora las órdenes de detenerse."
         },
         {
-            "id": "narr_03_detect",
-            "target_time": 32.0,
-            "text": "Al llegar al punto señalado, divisan al sujeto en una actitud claramente hostil."
+            "id": "narr_03_action",
+            "target_time": 38.0,
+            "text": "De imprevisto, el sujeto se gira y despliega una amenaza letal directa contra los agentes."
         },
         {
-            "id": "narr_04_escalation",
-            "target_time": 48.0,
-            "text": "De imprevisto, la situación escala de forma crítica con una amenaza directa contra la vida del oficial."
+            "id": "narr_04_tension",
+            "target_time": 68.0,
+            "text": "Bajo extrema presión, se despliega la maniobra táctica y se solicita respaldo urgente por radio."
         },
         {
-            "id": "narr_05_action",
-            "target_time": 64.0,
-            "text": "Bajo extrema presión, se despliega la maniobra defensiva y se buscan ángulos de cobertura."
-        },
-        {
-            "id": "narr_06_tension",
-            "target_time": 80.0,
-            "text": "El agente reporta de inmediato el estado de emergencia para coordinar la llegada de unidades tácticas."
-        },
-        {
-            "id": "narr_07_backup",
-            "target_time": 96.0,
-            "text": "Las patrullas de apoyo aseguran el perímetro y neutralizan el foco de peligro."
-        },
-        {
-            "id": "narr_08_outro",
-            "target_time": max(106.0, slice_dur - 12.0),
+            "id": "narr_05_outro",
+            "target_time": max(100.0, slice_dur - 12.0),
             "text": "Las investigaciones oficiales determinaron el uso justificado de la fuerza. Suscríbete a Expediente Policial."
         }
     ]
@@ -235,7 +262,7 @@ Suscríbete a Expediente Policial para seguir descubriendo los procedimientos fo
         "badge_sub": badge_sub,
         "badge_title": badge_title,
         "seo_description": seo_description,
-        "slice_start": 10 if duration > 140 else 0,
+        "slice_start": slice_start,
         "slice_duration": slice_dur,
         "teaser_start": 25.0 if slice_dur > 35 else 5.0,
         "teaser_duration": 3.5,

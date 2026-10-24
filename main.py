@@ -119,6 +119,17 @@ def run_pipeline():
         output_mp4,
         case_work_dir
     )
+
+    # Save a local copy to user's Shorts folder if running on local Windows machine
+    local_shorts_dir = r"C:\Users\Vanes\Downloads\Expediente Policial\Shorts"
+    if os.path.exists(local_shorts_dir):
+        try:
+            clean_badge = "".join(c for c in metadata.get('badge_title', '') if c.isalnum() or c in (' ', '_')).rstrip()
+            local_target = os.path.join(local_shorts_dir, f"{case_code}_{clean_badge.replace(' ', '_')}_Vertical.mp4")
+            shutil.copyfile(output_mp4, local_target)
+            print(f"[Main] Saved copy to local Shorts folder: {local_target}")
+        except Exception as e:
+            print(f"[Main] Notice copying to local folder: {e}")
     
     # 5. Upload & Publish
     print("\n[Step 5/5] Uploading and publishing video across platforms...")

@@ -91,11 +91,18 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     
     cmd = [
         "yt-dlp",
-        "-v",
         "--download-sections", time_range,
-        "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416",
         "--no-check-certificates",
     ]
+    # Add PO token provider only if server is running (e.g. GitHub Actions Docker)
+    try:
+        import requests
+        r = requests.get("http://127.0.0.1:4416", timeout=0.8)
+        if r.status_code == 200:
+            cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
+    except Exception:
+        pass
+
     if os.path.exists("cookies.txt"):
         cmd.extend(["--cookies", "cookies.txt"])
         

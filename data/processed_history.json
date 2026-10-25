@@ -63,5 +63,20 @@
     "facebook_url": "https://www.facebook.com/2721939511598627",
     "status": "published",
     "processed_at": "2026-10-25 09:44:57"
+  },
+  {
+    "case_code": "EXP_012",
+    "video_id": "oOf1ch8LoU8",
+    "original_title": "Suspect Opens Fire on SWAT Officers Moments After Door Breach",
+    "spanish_title": "¡EMBOSCADA A TIROS CONTRA SWAT AL DERRIBAR PUERTA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.12_1792970866/EXP_012_Short_Vertical.mp4",
+    "buffer_post_id": "6ade90ec8b3d437ddc330f06",
+    "youtube_url": "https://www.youtube.com/watch?v=QxDfsTk1bVk",
+    "instagram_reel_id": "18644070415000253",
+    "instagram_url": "https://www.instagram.com/reel/De75CLiA78X/",
+    "facebook_video_id": "1624887845958701",
+    "facebook_url": "https://www.facebook.com/1624887845958701",
+    "status": "published",
+    "processed_at": "2026-10-25 18:31:09"
   }
 ]

@@ -78,5 +78,20 @@
     "facebook_url": "https://www.facebook.com/1624887845958701",
     "status": "published",
     "processed_at": "2026-10-25 18:31:09"
+  },
+  {
+    "case_code": "EXP_013",
+    "video_id": "ABAZlIL1fFU",
+    "original_title": "Armed Suspect Flees Police Before PIT Maneuver Ends Pursuit",
+    "spanish_title": "¡MANIOBRA PIT A TODA VELOCIDAD TRAS PERSECUCIÓN ARMADA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.13_1793025306/EXP_013_Short_Vertical.mp4",
+    "buffer_post_id": "6adf655bc19bb19045b24864",
+    "youtube_url": "https://www.youtube.com/watch?v=fXJ9DNXUJEs",
+    "instagram_reel_id": "18042781919837233",
+    "instagram_url": "https://www.instagram.com/reel/De9gxgDCtY4/",
+    "facebook_video_id": "2555394754962024",
+    "facebook_url": "https://www.facebook.com/2555394754962024",
+    "status": "published",
+    "processed_at": "2026-10-26 09:37:53"
   }
 ]

@@ -123,5 +123,20 @@
     "facebook_url": "https://www.facebook.com/3032657973775664",
     "status": "published",
     "processed_at": "2026-10-27 08:01:31"
+  },
+  {
+    "case_code": "EXP_016",
+    "video_id": "DbTxD1AI31g",
+    "original_title": "Man Pulls Large Knife As Officers Enter His Room",
+    "spanish_title": "¡RESCATAN A FAMILIAR Y SUJETO LOS ATACA CON ENORME CUCHILLO! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.16_1793126606/EXP_016_Short_Vertical.mp4",
+    "buffer_post_id": "6ae0f10ac9f6d4b0c923527b",
+    "youtube_url": "https://www.youtube.com/watch?v=7hDsMvsLbd4",
+    "instagram_reel_id": "17902219647671299",
+    "instagram_url": "https://www.instagram.com/reel/DfAh9p5Slve/",
+    "facebook_video_id": "3117469551978264",
+    "facebook_url": "https://www.facebook.com/3117469551978264",
+    "status": "published",
+    "processed_at": "2026-10-27 13:45:42"
   }
 ]

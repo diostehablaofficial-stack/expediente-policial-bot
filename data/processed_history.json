@@ -153,5 +153,20 @@
     "facebook_url": "https://www.facebook.com/2018546832190709",
     "status": "published",
     "processed_at": "2026-10-27 19:50:00"
+  },
+  {
+    "case_code": "EXP_018",
+    "video_id": "Aqx0FXh9mpM",
+    "original_title": "Suspect Shoots At Pursuing Cop Then Tries To Steal Another Car",
+    "spanish_title": "¡FUGITIVO DISPARA A PATRULLA Y OFICIAL RESPONDE POR EL PARABRISAS! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.18_1793214303/EXP_018_Short_Vertical.mp4",
+    "buffer_post_id": "6ae247b9ad4a74e89cf0fa91",
+    "youtube_url": "https://www.youtube.com/watch?v=5svcr-BLDfU",
+    "instagram_reel_id": "18134039587685910",
+    "instagram_url": "https://www.instagram.com/reel/DfDJT1XALQO/",
+    "facebook_video_id": "1388121376726806",
+    "facebook_url": "https://www.facebook.com/1388121376726806",
+    "status": "published",
+    "processed_at": "2026-10-28 14:08:29"
   }
 ]

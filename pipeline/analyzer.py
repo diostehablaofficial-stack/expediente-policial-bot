@@ -152,7 +152,7 @@ def analyze_with_groq(api_key, video_data):
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    models = ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.8-27b"]
+    models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
     
     for mod in models:
         try:

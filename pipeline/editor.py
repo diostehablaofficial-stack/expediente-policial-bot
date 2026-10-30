@@ -83,18 +83,23 @@ def generate_teaser_pill(output_png, fonts_dir):
 
 def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     """
-    Uses yt-dlp to download the high-quality 1080p segment directly.
+    Downloads high-quality 1080p video segment using yt-dlp and ffmpeg for maximum robustness.
     """
     end_sec = start_sec + duration_sec
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")
     
+    # Method 1: Try section download
     cmd = [
         "yt-dlp",
         "--download-sections", time_range,
         "--no-check-certificates",
+        "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+        "--merge-output-format", "mp4",
+        "--force-overwrites",
+        "-o", output_mp4
     ]
-    # Add PO token provider only if server is running (e.g. GitHub Actions Docker)
+    
     try:
         import requests
         r = requests.get("http://127.0.0.1:4416", timeout=0.8)
@@ -106,22 +111,45 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     if os.path.exists("cookies.txt"):
         cmd.extend(["--cookies", "cookies.txt"])
         
-    cmd.extend([
-        "-f", "bv*[height<=1080]+ba/b[height<=1080]",
-        "--merge-output-format", "mp4",
-        "--force-overwrites",
-        "-o", output_mp4,
-        video_url
-    ])
+    cmd.append(video_url)
     
     proc = subprocess.run(cmd, capture_output=True, text=True)
-    if proc.returncode != 0:
-        print(f"[Editor] ERROR downloading video section!")
-        print(f"STDOUT:\n{proc.stdout}")
-        print(f"STDERR:\n{proc.stderr}")
-        raise RuntimeError(f"yt-dlp failed with code {proc.returncode}")
+    if proc.returncode == 0 and os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 1000000:
+        print(f"[Editor] Video section downloaded directly: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
+        return output_mp4
+
+    # Method 2: Fallback - download whole video and slice precisely with ffmpeg
+    print(f"[Editor] Section download notice. Falling back to full video stream download and ffmpeg slice...")
+    full_temp = output_mp4 + ".full.mp4"
+    cmd_full = [
+        "yt-dlp",
+        "--no-check-certificates",
+        "-f", "bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/bestvideo[height<=1080]+bestaudio/best[height<=1080]/best",
+        "--merge-output-format", "mp4",
+        "--force-overwrites",
+        "-o", full_temp
+    ]
+    if os.path.exists("cookies.txt"):
+        cmd_full.extend(["--cookies", "cookies.txt"])
+    cmd_full.append(video_url)
+    
+    subprocess.run(cmd_full, check=True)
+    print(f"[Editor] Full source downloaded. Cutting slice from {start_sec:.1f}s for {duration_sec:.1f}s...")
+    cmd_cut = [
+        "ffmpeg", "-y",
+        "-ss", str(start_sec),
+        "-t", str(duration_sec),
+        "-i", full_temp,
+        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+        "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
+        output_mp4
+    ]
+    subprocess.run(cmd_cut, check=True)
+    if os.path.exists(full_temp):
+        os.remove(full_temp)
         
-    print(f"[Editor] Video segment downloaded successfully: {output_mp4}")
+    print(f"[Editor] Video segment cut successfully: {output_mp4}")
+    return output_mp4
 
 
 

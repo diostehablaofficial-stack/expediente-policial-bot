@@ -64,17 +64,20 @@ def upload_to_github_release(file_path, tag_name, repo_name, token):
 
 def get_public_video_url(file_path, case_code):
     """
-    Tries GitHub Release if public repo; falls back to fast direct CDN temp.sh.
+    Creates high-speed GitHub Release CDN asset URL; falls back to temp.sh if needed.
     """
     token = os.environ.get("GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
     repo = os.environ.get("GITHUB_REPOSITORY", "diostehablaofficial-stack/expediente-policial-bot")
     
     if token and repo:
         try:
-            # Check if repo is public
             r = requests.get(f"https://api.github.com/repos/{repo}", headers={"Authorization": f"Bearer {token}"})
             if r.status_code == 200 and not r.json().get("private"):
-                tag = f"{case_code}_{int(time.time())}"
+                try:
+                    num = int(case_code.split("_")[-1])
+                    tag = f"v1.0.{num}_{int(time.time())}"
+                except Exception:
+                    tag = f"{case_code}_{int(time.time())}"
                 return upload_to_github_release(file_path, tag, repo, token)
         except Exception as e:
             print(f"[Publisher] GitHub Release attempt notice: {e}")
@@ -301,8 +304,8 @@ def publish_case(video_file, metadata):
         print("[Publisher] BUFFER_TOKEN or BUFFER_CHANNEL_ID missing in environment. Skipping YouTube upload.")
 
     # 3. Meta (Instagram / Facebook)
-    meta_token = os.environ.get("META_ACCESS_TOKEN")
-    ig_id = os.environ.get("INSTAGRAM_ACCOUNT_ID")
+    meta_token = os.environ.get("META_ACCESS_TOKEN") or os.environ.get("META_TOKEN")
+    ig_id = os.environ.get("INSTAGRAM_ACCOUNT_ID") or os.environ.get("IG_USER_ID")
     fb_id = os.environ.get("FB_PAGE_ID")
     
     if meta_token and (ig_id or fb_id):

@@ -83,13 +83,13 @@ def generate_teaser_pill(output_png, fonts_dir):
 
 def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     """
-    Downloads high-quality video segment using yt-dlp with android/ios player client and ffmpeg.
+    Downloads high-quality video segment using yt-dlp with tv,android player client and ffmpeg.
     """
     end_sec = start_sec + duration_sec
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")
     
-    extractor_args = "youtube:player_client=android,ios;youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"
+    extractor_args = "youtube:player_client=tv,android"
     
     # Method 1: Try direct section download
     cmd = [
@@ -112,7 +112,8 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
             print(f"[Editor] Video section downloaded directly: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
             return output_mp4
         else:
-            print(f"[Editor] Section download notice: {proc.stderr[:150] if proc.stderr else 'incomplete file'}")
+            err_msg = proc.stderr[:150] if proc.stderr else "incomplete file"
+            print(f"[Editor] Section download notice: {err_msg}")
     except Exception as e:
         print(f"[Editor] Section download notice: {e}")
 
@@ -132,12 +133,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         cmd_full.extend(["--cookies", "cookies.txt"])
     cmd_full.append(video_url)
     
-    proc_full = subprocess.run(cmd_full, capture_output=True, text=True)
-    if proc_full.returncode != 0:
-        print(f"[Editor] Warning on full stream download: {proc_full.stderr[:200]}. Trying fallback format 18...")
-        cmd_full[5] = "18/best"
-        subprocess.run(cmd_full, check=True)
-        
+    subprocess.run(cmd_full, check=True)
     print(f"[Editor] Cutting slice from {start_sec:.1f}s for {duration_sec:.1f}s...")
     cmd_cut = [
         "ffmpeg", "-y",

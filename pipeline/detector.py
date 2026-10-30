@@ -67,7 +67,7 @@ def fetch_channel_videos():
     # Method 2: yt-dlp flat playlist
     try:
         cmd = [
-            "yt-dlp", "--flat-playlist", "--dump-single-json",
+            sys.executable, "-m", "yt_dlp", "--flat-playlist", "--dump-single-json",
             "--playlist-end", "10",
             CHANNEL_URL
         ]
@@ -92,7 +92,7 @@ def get_video_details(video_url, basic_info=None):
     Falls back gracefully if YouTube player challenge fails.
     """
     cmd = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
         "--dump-json",
         "--skip-download",
         "--no-check-certificates",

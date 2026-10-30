@@ -97,7 +97,8 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     
     # Method 1: Try direct section download
     cmd = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
+        "-v",
         "--download-sections", time_range,
         "--no-check-certificates",
     ] + extra_args + [
@@ -116,7 +117,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
             print(f"[Editor] Video section downloaded directly: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
             return output_mp4
         else:
-            err_msg = proc.stderr[:150] if proc.stderr else "incomplete file"
+            err_msg = proc.stderr[:300] if proc.stderr else "incomplete file"
             print(f"[Editor] Section download notice: {err_msg}")
     except Exception as e:
         print(f"[Editor] Section download notice: {e}")
@@ -125,7 +126,8 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     print(f"[Editor] Downloading full video stream to cut precise slice...")
     full_temp = output_mp4 + ".full.mp4"
     cmd_full = [
-        "yt-dlp",
+        sys.executable, "-m", "yt_dlp",
+        "-v",
         "--no-check-certificates",
     ] + extra_args + [
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",

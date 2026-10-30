@@ -83,20 +83,24 @@ def generate_teaser_pill(output_png, fonts_dir):
 
 def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     """
-    Downloads high-quality video segment using yt-dlp with tv,android player client and ffmpeg.
+    Downloads high-quality video segment using yt-dlp with PO Token provider on Linux or tv,android on Windows.
     """
     end_sec = start_sec + duration_sec
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")
     
-    extractor_args = "youtube:player_client=tv,android"
+    extra_args = []
+    if os.name != "nt":
+        extra_args = ["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"]
+    else:
+        extra_args = ["--extractor-args", "youtube:player_client=tv,android"]
     
     # Method 1: Try direct section download
     cmd = [
         "yt-dlp",
         "--download-sections", time_range,
         "--no-check-certificates",
-        "--extractor-args", extractor_args,
+    ] + extra_args + [
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
         "--merge-output-format", "mp4",
         "--force-overwrites",
@@ -123,7 +127,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     cmd_full = [
         "yt-dlp",
         "--no-check-certificates",
-        "--extractor-args", extractor_args,
+    ] + extra_args + [
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
         "--merge-output-format", "mp4",
         "--force-overwrites",

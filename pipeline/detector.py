@@ -96,8 +96,11 @@ def get_video_details(video_url, basic_info=None):
         "--dump-json",
         "--skip-download",
         "--no-check-certificates",
-        "--extractor-args", "youtube:player_client=tv,android",
     ]
+    if os.name != "nt":
+        cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
+    else:
+        cmd.extend(["--extractor-args", "youtube:player_client=tv,android"])
 
     if os.path.exists("cookies.txt"):
         cmd.extend(["--cookies", "cookies.txt"])

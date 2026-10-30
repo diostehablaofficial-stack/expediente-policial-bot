@@ -35,14 +35,8 @@ jobs:
       - name: Start BgUtils PO Token Provider (Docker)
         run: |
           docker run -d --name bgutil-provider -p 4416:4416 brainicism/bgutil-ytdlp-pot-provider:latest
-          for i in {1..15}; do
-            if curl -s http://127.0.0.1:4416/ping | grep -q "pong"; then
-              echo "PO Token provider is alive and responding!"
-              break
-            fi
-            echo "Waiting for PO Token provider to boot ($i/15)..."
-            sleep 2
-          done
+          sleep 5
+          docker logs bgutil-provider || true
 
       - name: Install FFmpeg & Fonts
         run: |

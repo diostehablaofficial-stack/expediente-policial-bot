@@ -117,8 +117,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
             print(f"[Editor] Video section downloaded directly: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
             return output_mp4
         else:
-            err_msg = proc.stderr[:300] if proc.stderr else "incomplete file"
-            print(f"[Editor] Section download notice: {err_msg}")
+            print(f"[Editor] Section download notice:\n{proc.stderr}")
     except Exception as e:
         print(f"[Editor] Section download notice: {e}")
 
@@ -139,7 +138,26 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         cmd_full.extend(["--cookies", "cookies.txt"])
     cmd_full.append(video_url)
     
-    subprocess.run(cmd_full, check=True)
+    proc_full = subprocess.run(cmd_full, capture_output=True, text=True)
+    if proc_full.returncode != 0:
+        print(f"[Editor] Notice on full stream: {proc_full.stderr[:300]}")
+        print(f"[Editor] Trying secondary fallback with android client (bypasses datacenter block)...")
+        cmd_fallback = [
+            sys.executable, "-m", "yt_dlp",
+            "--no-check-certificates",
+            "--extractor-args", "youtube:player_client=android",
+            "-f", "best[height<=1080]/18/best",
+            "--merge-output-format", "mp4",
+            "--force-overwrites",
+            "-o", full_temp,
+            video_url
+        ]
+        proc_fb = subprocess.run(cmd_fallback, capture_output=True, text=True)
+        if proc_fb.returncode != 0:
+            print(f"[Editor] Fallback STDERR:\n{proc_fb.stderr}")
+            raise RuntimeError(f"yt-dlp failed completely:\n{proc_full.stderr}\n{proc_fb.stderr}")
+        else:
+            print(f"[Editor] Downloaded successfully via android client fallback!")
     print(f"[Editor] Cutting slice from {start_sec:.1f}s for {duration_sec:.1f}s...")
     cmd_cut = [
         "ffmpeg", "-y",

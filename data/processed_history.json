@@ -198,5 +198,20 @@
     "facebook_url": "https://www.facebook.com/1124096249979166",
     "status": "published",
     "processed_at": "2026-10-30 18:39:36"
+  },
+  {
+    "case_code": "EXP_021",
+    "video_id": "MsdA8FsYZ7o",
+    "original_title": "Officer Gets Shot in the Arm When Suspect Opens Fire Near Shed",
+    "spanish_title": "¡SOSPECHOSO DISPARA A QUEMARROPA JUNTO A UN COBERTIZO! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.21_1793464193/EXP_021_Short_Vertical.mp4",
+    "buffer_post_id": "6ae6182fab019b908712bd87",
+    "youtube_url": "https://www.youtube.com/watch?v=6TdKSbp7ZJc",
+    "instagram_reel_id": "18135115621735804",
+    "instagram_url": "https://www.instagram.com/reel/DfKmFpiK1zZ/",
+    "facebook_video_id": "1911891316450812",
+    "facebook_url": "https://www.facebook.com/1911891316450812",
+    "status": "published",
+    "processed_at": "2026-10-31 11:34:29"
   }
 ]

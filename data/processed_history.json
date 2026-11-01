@@ -213,5 +213,20 @@
     "facebook_url": "https://www.facebook.com/1911891316450812",
     "status": "published",
     "processed_at": "2026-10-31 11:34:29"
+  },
+  {
+    "case_code": "EXP_022",
+    "video_id": "sfRmFQuhwcA",
+    "original_title": "One Shot Ends Balcony Standoff After Cop Spots Suspect With Gun",
+    "spanish_title": "¡UN SOLO DISPARO FRENA AL SOSPECHOSO EN EL BALCÓN! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.22_1793564592/EXP_022_Short_Vertical.mp4",
+    "buffer_post_id": "6ae7a07d7cb7cec07353067e",
+    "youtube_url": "https://www.youtube.com/watch?v=6wJgCRejagA",
+    "instagram_reel_id": "18509121280102685",
+    "instagram_url": "https://www.instagram.com/reel/DfNluMCMH--/",
+    "facebook_video_id": "2328506914661069",
+    "facebook_url": "https://www.facebook.com/2328506914661069",
+    "status": "published",
+    "processed_at": "2026-11-01 15:28:42"
   }
 ]

@@ -141,23 +141,25 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     proc_full = subprocess.run(cmd_full, capture_output=True, text=True)
     if proc_full.returncode != 0:
         print(f"[Editor] Notice on full stream: {proc_full.stderr[:300]}")
-        print(f"[Editor] Trying secondary fallback with android client (bypasses datacenter block)...")
+        print(f"[Editor] Trying secondary fallback with ios/android clients...")
         cmd_fallback = [
             sys.executable, "-m", "yt_dlp",
             "--no-check-certificates",
-            "--extractor-args", "youtube:player_client=android",
-            "-f", "best[height<=1080]/18/best",
+            "--extractor-args", "youtube:player_client=android,ios,tv",
+            "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/18/best",
             "--merge-output-format", "mp4",
             "--force-overwrites",
-            "-o", full_temp,
-            video_url
         ]
+        if os.path.exists("cookies.txt"):
+            cmd_fallback.extend(["--cookies", "cookies.txt"])
+        cmd_fallback.extend(["-o", full_temp, video_url])
+        
         proc_fb = subprocess.run(cmd_fallback, capture_output=True, text=True)
         if proc_fb.returncode != 0:
             print(f"[Editor] Fallback STDERR:\n{proc_fb.stderr}")
             raise RuntimeError(f"yt-dlp failed completely:\n{proc_full.stderr}\n{proc_fb.stderr}")
         else:
-            print(f"[Editor] Downloaded successfully via android client fallback!")
+            print(f"[Editor] Downloaded successfully via client fallback!")
     print(f"[Editor] Cutting slice from {start_sec:.1f}s for {duration_sec:.1f}s...")
     cmd_cut = [
         "ffmpeg", "-y",

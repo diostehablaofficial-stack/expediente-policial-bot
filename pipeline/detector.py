@@ -89,7 +89,7 @@ def fetch_channel_videos():
 def get_video_details(video_url, basic_info=None):
     """
     Retrieves full video details (chapters, full description, duration) via yt-dlp.
-    Falls back gracefully if YouTube player challenge fails.
+    Validates that the video streams are accessible. Returns None if video is blocked/requires login.
     """
     cmd = [
         sys.executable, "-m", "yt_dlp",
@@ -112,26 +112,40 @@ def get_video_details(video_url, basic_info=None):
             data = json.loads(proc.stdout)
             data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
             return data
-
         else:
-            print(f"[Detector] yt-dlp dump-json warning/error: {proc.stderr.strip()[:300]}")
+            stderr_msg = proc.stderr.strip()
+            print(f"[Detector] dump-json notice: {stderr_msg[:250]}")
+            
+            # If blocked by bot-check or login, try secondary fallback client
+            print("[Detector] Trying secondary client fallback (android,ios)...")
+            cmd_fb = [
+                sys.executable, "-m", "yt_dlp",
+                "--dump-json",
+                "--skip-download",
+                "--no-check-certificates",
+                "--extractor-args", "youtube:player_client=android,ios,tv"
+            ]
+            if os.path.exists("cookies.txt"):
+                cmd_fb.extend(["--cookies", "cookies.txt"])
+            cmd_fb.append(video_url)
+            
+            proc_fb = subprocess.run(cmd_fb, capture_output=True, text=True, timeout=30)
+            if proc_fb.returncode == 0 and proc_fb.stdout.strip():
+                data = json.loads(proc_fb.stdout)
+                data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
+                return data
+
+            if "Sign in to confirm you’re not a bot" in stderr_msg or "Sign in to confirm you're not a bot" in stderr_msg or "LOGIN_REQUIRED" in stderr_msg:
+                print(f"[Detector] Video {video_url} requires login/bot verification. Skipping.")
+                return None
     except Exception as e:
         print(f"[Detector] dump-json exception: {e}")
         
-    # Graceful fallback: return basic_info augmented with defaults
-    print("[Detector] Using fallback video details structure.")
-    fallback = basic_info.copy() if basic_info else {}
-    fallback["id"] = fallback.get("id") or video_url.split("v=")[-1]
-    fallback["title"] = fallback.get("title") or "Intervención Policial de Alto Riesgo"
-    fallback["duration"] = fallback.get("duration") or 180
-    fallback["chapters"] = []
-    fallback["description"] = f"{fallback.get('title')} — Video de archivo policial oficial de dominio público."
-    fallback["url"] = video_url
-    return fallback
+    return None
 
 def find_next_candidate(history_file):
     """
-    Checks channel videos against processed history and returns the first unprocessed candidate.
+    Checks channel videos against processed history and returns the first unprocessed accessible candidate.
     """
     processed = get_processed_ids(history_file)
     print(f"[Detector] Loaded {len(processed)} previously processed cases/videos.")
@@ -151,11 +165,15 @@ def find_next_candidate(history_file):
         if already_done:
             continue
             
-        print(f"[Detector] Found new candidate video: {v['title']} (ID: {vid})")
+        print(f"[Detector] Testing candidate video: {v['title']} (ID: {vid})...")
         details = get_video_details(v["url"], basic_info=v)
-        return details
-        
-    print("[Detector] All recent videos have already been processed.")
+        if details:
+            print(f"[Detector] Valid candidate confirmed: {v['title']} (ID: {vid})")
+            return details
+        else:
+            print(f"[Detector] Candidate {vid} is not immediately accessible in current environment. Checking next...")
+            
+    print("[Detector] All recent videos have already been processed or are restricted.")
     return None
 
 

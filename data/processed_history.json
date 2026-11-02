@@ -228,5 +228,20 @@
     "facebook_url": "https://www.facebook.com/2328506914661069",
     "status": "published",
     "processed_at": "2026-11-01 15:28:42"
+  },
+  {
+    "case_code": "EXP_023",
+    "video_id": "6Wcq2U4gUjs",
+    "original_title": "Officer Opens Fire On Man Attacking Victim With Box Cutter",
+    "spanish_title": "¡OFICIAL ABRE FUEGO CONTRA AGRESOR ARMADO CON CÚTER! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.23_1793660813/EXP_023_Short_Vertical.mp4",
+    "buffer_post_id": "6ae917fd9e9bda3b49d46df8",
+    "youtube_url": "https://www.youtube.com/watch?v=qDjaiPamA24",
+    "instagram_reel_id": "18117808184595287",
+    "instagram_url": "https://www.instagram.com/reel/DfQc_tnObxK/",
+    "facebook_video_id": "2355322971891605",
+    "facebook_url": "https://www.facebook.com/2355322971891605",
+    "status": "published",
+    "processed_at": "2026-11-02 18:10:12"
   }
 ]

@@ -53,12 +53,13 @@ jobs:
           YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
         run: |
           if [ -n "$YOUTUBE_COOKIES" ]; then
-            echo "$YOUTUBE_COOKIES" > cookies.txt
-            echo "Loaded custom YouTube cookies."
+            python -c 'import os; open("cookies.txt", "w", encoding="utf-8").write(os.environ["YOUTUBE_COOKIES"].strip() + "\n")'
+            echo "Loaded custom YouTube cookies ($(wc -l < cookies.txt) lines)."
           fi
 
       - name: Run Video Creation & Publishing Pipeline
         env:
+          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
           BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
           BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

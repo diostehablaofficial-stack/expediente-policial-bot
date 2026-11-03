@@ -56,6 +56,15 @@ def run_pipeline():
     os.makedirs(OUTPUT_DIR, exist_ok=True)
     os.makedirs(WORK_DIR, exist_ok=True)
     
+    # Load cookies from environment if available and not present on disk
+    if "YOUTUBE_COOKIES" in os.environ and not os.path.exists("cookies.txt"):
+        try:
+            with open("cookies.txt", "w", encoding="utf-8") as f:
+                f.write(os.environ["YOUTUBE_COOKIES"].strip() + "\n")
+            print("[Main] Successfully initialized cookies.txt from environment variable.")
+        except Exception as e:
+            print(f"[Main] Notice initializing cookies from env: {e}")
+    
     # 1. Detect candidate
     print("\n[Step 1/5] Detecting latest unprocessed video from @PoliceActivity...")
     candidate = find_next_candidate(HISTORY_FILE)

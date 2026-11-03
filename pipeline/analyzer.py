@@ -121,6 +121,10 @@ def find_optimal_action_window(video_data):
         ]
         if os.path.exists("cookies.txt"):
             cmd.extend(["--cookies", "cookies.txt"])
+        if os.name != "nt":
+            cmd.extend(["--extractor-args", "youtube:player_client=web,mweb,tv;youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
+        else:
+            cmd.extend(["--extractor-args", "youtube:player_client=tv,android,web"])
         try:
             r = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=45)
             if r.returncode == 0 and os.path.exists(tmp_audio):

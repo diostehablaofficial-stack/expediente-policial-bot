@@ -56,12 +56,16 @@ jobs:
         run: |
           if [ -n "$YOUTUBE_COOKIES" ]; then
             python -c 'import os; open("cookies.txt", "w", encoding="utf-8").write(os.environ["YOUTUBE_COOKIES"].strip() + "\n")'
-            echo "Loaded custom YouTube cookies ($(wc -l < cookies.txt) lines)."
+            if yt-dlp --cookies cookies.txt --skip-download "https://www.youtube.com/watch?v=0Bq5iqS691k" 2>&1 | grep -q -E "no longer valid|Sign in to confirm you're not a bot"; then
+              echo "Notice: Cookies are expired or rotated. Removing cookies.txt to use clean PO-Token provider."
+              rm -f cookies.txt
+            else
+              echo "Loaded valid custom YouTube cookies."
+            fi
           fi
 
       - name: Run Video Creation & Publishing Pipeline
         env:
-          YOUTUBE_COOKIES: ${{ secrets.YOUTUBE_COOKIES }}
           BUFFER_TOKEN: ${{ secrets.BUFFER_TOKEN }}
           BUFFER_CHANNEL_ID: ${{ secrets.BUFFER_CHANNEL_ID }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}

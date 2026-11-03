@@ -136,10 +136,10 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     extra_args = []
     if os.path.exists("cookies.txt"):
         extra_args.extend(["--cookies", "cookies.txt"])
+    if os.name != "nt":
+        extra_args.extend(["--extractor-args", "youtube:player_client=web,mweb,tv;youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
     else:
-        extra_args.extend(["--extractor-args", "youtube:player_client=tv,android"])
-        if os.name != "nt":
-            extra_args.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
+        extra_args.extend(["--extractor-args", "youtube:player_client=tv,android,web"])
     
     # Method 1: Try direct section download
     cmd = [

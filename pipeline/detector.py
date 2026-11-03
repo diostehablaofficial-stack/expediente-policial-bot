@@ -93,58 +93,77 @@ def fetch_flat_playlist(limit=60):
         print(f"[Detector] yt-dlp flat-playlist query failed: {e}")
         return []
 
+def get_ytdlp_extractor_args():
+    """
+    Returns optimal extractor args for yt-dlp.
+    When on Linux (e.g. GitHub Actions), connects to the local bgutil POT provider on 4416.
+    """
+    if os.name != "nt":
+        return ["--extractor-args", "youtube:player_client=web,mweb,tv;youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"]
+    else:
+        return ["--extractor-args", "youtube:player_client=tv,android,web"]
+
 def get_video_details(video_url, basic_info=None):
     """
     Retrieves full video details (chapters, full description, duration) via yt-dlp.
     Validates that the video streams are accessible. Returns None if video is blocked/requires login.
     """
-    cmd = [
-        sys.executable, "-m", "yt_dlp",
-        "--dump-json",
-        "--skip-download",
-        "--no-check-certificates",
-        "--remote-components", "ejs:github",
-    ]
-    if os.path.exists("cookies.txt"):
-        cmd.extend(["--cookies", "cookies.txt"])
-    else:
-        cmd.extend(["--extractor-args", "youtube:player_client=tv,android"])
-        
-    cmd.append(video_url)
+    def run_dump(use_cookies=True):
+        cmd = [
+            sys.executable, "-m", "yt_dlp",
+            "--dump-json",
+            "--skip-download",
+            "--no-check-certificates",
+            "--remote-components", "ejs:github",
+        ]
+        if use_cookies and os.path.exists("cookies.txt"):
+            cmd.extend(["--cookies", "cookies.txt"])
+        cmd.extend(get_ytdlp_extractor_args())
+        cmd.append(video_url)
+        return subprocess.run(cmd, capture_output=True, text=True, timeout=35)
 
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        proc = run_dump(use_cookies=True)
         if proc.returncode == 0 and proc.stdout.strip():
             data = json.loads(proc.stdout)
             data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
             return data
-        else:
-            stderr_msg = proc.stderr.strip()
-            print(f"[Detector] dump-json notice: {stderr_msg[:250]}")
             
-            # If blocked or challenge fails, try secondary fallback client without cookies
-            print("[Detector] Trying secondary client fallback (android,ios,tv)...")
-            cmd_fb = [
-                sys.executable, "-m", "yt_dlp",
-                "--dump-json",
-                "--skip-download",
-                "--no-check-certificates",
-                "--remote-components", "ejs:github",
-                "--extractor-args", "youtube:player_client=android,ios,tv",
-                video_url
-            ]
-            
-            proc_fb = subprocess.run(cmd_fb, capture_output=True, text=True, timeout=30)
-            if proc_fb.returncode == 0 and proc_fb.stdout.strip():
-                data = json.loads(proc_fb.stdout)
+        stderr_msg = proc.stderr.strip()
+        print(f"[Detector] dump-json notice: {stderr_msg[:250]}")
+        
+        # If cookies were invalid, remove cookies.txt and retry immediately with PO Token provider
+        if os.path.exists("cookies.txt") and any(b in stderr_msg for b in ["no longer valid", "not a bot", "LOGIN_REQUIRED"]):
+            print("[Detector] Stale cookies detected. Removing cookies.txt and retrying with PO Token provider...")
+            try:
+                os.remove("cookies.txt")
+            except Exception:
+                pass
+            proc = run_dump(use_cookies=False)
+            if proc.returncode == 0 and proc.stdout.strip():
+                data = json.loads(proc.stdout)
                 data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
                 return data
-            else:
-                print(f"[Detector] Secondary fallback error: {proc_fb.stderr.strip()[:250]}")
+                
+        # Secondary fallback: try client rotation with POT provider
+        cmd_fb = [
+            sys.executable, "-m", "yt_dlp",
+            "--dump-json",
+            "--skip-download",
+            "--no-check-certificates",
+            "--remote-components", "ejs:github",
+        ] + get_ytdlp_extractor_args() + [video_url]
+        proc_fb = subprocess.run(cmd_fb, capture_output=True, text=True, timeout=35)
+        if proc_fb.returncode == 0 and proc_fb.stdout.strip():
+            data = json.loads(proc_fb.stdout)
+            data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
+            return data
+        else:
+            print(f"[Detector] Secondary fallback notice: {proc_fb.stderr.strip()[:250]}")
 
-            if "Sign in to confirm you’re not a bot" in stderr_msg or "Sign in to confirm you're not a bot" in stderr_msg or "LOGIN_REQUIRED" in stderr_msg:
-                print(f"[Detector] Video {video_url} requires login/bot verification. Skipping.")
-                return None
+        if "Sign in to confirm you’re not a bot" in stderr_msg or "Sign in to confirm you're not a bot" in stderr_msg or "LOGIN_REQUIRED" in stderr_msg:
+            print(f"[Detector] Video {video_url} requires login/bot verification. Skipping.")
+            return None
     except Exception as e:
         print(f"[Detector] dump-json exception: {e}")
         

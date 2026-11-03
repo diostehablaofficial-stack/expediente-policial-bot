@@ -99,7 +99,10 @@ def get_ytdlp_extractor_args():
     When on Linux (e.g. GitHub Actions), connects to the local bgutil POT provider on 4416.
     """
     if os.name != "nt":
-        return ["--extractor-args", "youtube:player_client=web,mweb,tv;youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"]
+        return [
+            "--extractor-args", "youtube:player_client=mweb,tv,web",
+            "--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"
+        ]
     else:
         return ["--extractor-args", "youtube:player_client=tv,android,web"]
 

@@ -72,6 +72,16 @@ def find_optimal_action_window(video_data):
     """
     duration = int(video_data.get("duration") or 180)
     chapters = video_data.get("chapters") or []
+
+    def clamp_window(start, teaser, dur_total):
+        dur_total = float(dur_total)
+        if dur_total <= 60.0:
+            return 0.0, dur_total, max(1.0, dur_total / 2.0)
+        max_start = max(0.0, dur_total - 45.0)
+        safe_start = max(0.0, min(float(start), max_start))
+        safe_dur = max(35.0, min(85.0, dur_total - safe_start))
+        safe_teaser = max(3.0, min(float(teaser), safe_dur - 3.0))
+        return safe_start, safe_dur, safe_teaser
     
     # 1. Check official chapters
     climax_hint = None
@@ -79,6 +89,8 @@ def find_optimal_action_window(video_data):
     for ch in chapters:
         t = ch.get("title", "").lower()
         st = int(ch.get("start_time", 0))
+        if st >= duration - 15:
+            continue
         if bodycam_offset == 0 and any(k in t for k in ["bodycam", "dashcam", "officer"]):
             bodycam_offset = st
         if any(k in t for k in ["shoot", "fire", "shots", "attack", "confront", "taser", "k9", "lethal", "board"]):
@@ -87,24 +99,27 @@ def find_optimal_action_window(video_data):
 
     if climax_hint and climax_hint > 35:
         start = max(0.0, float(climax_hint - 35))
-        dur = min(85.0, float(duration - start))
-        return start, dur, 35.0
+        return clamp_window(start, 35.0, duration)
 
-    # 2. Check description timestamps
+    # 2. Check description timestamps (must start at line head, not time-of-day mentions like 11:09 pm)
     desc = video_data.get("description", "")
-    pattern = re.compile(r'(?:\[|\b)(?:(\d{1,2}):)?(\d{1,2}):(\d{2})(?:\]|\b)\s*[-–—:]?\s*([^\n\r]+)')
+    pattern = re.compile(r'^\s*(?:\[|\()?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\]|\))?\s*[-–—:]?\s*(.+)$', re.IGNORECASE)
     for line in desc.splitlines():
-        m = pattern.search(line)
+        line_clean = line.strip()
+        if re.search(r'\b(?:am|pm|a\.m\.|p\.m\.)\b', line_clean, re.IGNORECASE):
+            continue
+        m = pattern.match(line_clean)
         if m:
-            if m.group(1):
+            if m.group(3):
                 st = int(m.group(1))*3600 + int(m.group(2))*60 + int(m.group(3))
             else:
-                st = int(m.group(2))*60 + int(m.group(3))
+                st = int(m.group(1))*60 + int(m.group(2))
+            if st >= duration - 15 or st < 0:
+                continue
             t = m.group(4).lower()
             if any(k in t for k in ["shoot", "fire", "shots", "attack", "confront", "taser", "k9", "bodycam"]):
                 start = max(0.0, float(st - 35))
-                dur = min(85.0, float(duration - start))
-                return start, dur, 35.0
+                return clamp_window(start, 35.0, duration)
 
     # 3. Audio peak scan for long videos (> 120s)
     vid_id = video_data.get("id", "")
@@ -167,9 +182,8 @@ def find_optimal_action_window(video_data):
                 except Exception:
                     pass
 
-                slice_dur = min(85.0, float(duration - best_start))
-                print(f"[ActionFinder] Pinpointed action: start={best_start}s, dur={slice_dur}s, teaser={teaser_start}s")
-                return float(best_start), slice_dur, teaser_start
+                print(f"[ActionFinder] Pinpointed action: start={best_start}s, teaser={teaser_start}s")
+                return clamp_window(best_start, teaser_start, duration)
         except Exception as e:
             print(f"[ActionFinder] Audio scan notice: {e}")
         finally:
@@ -181,8 +195,7 @@ def find_optimal_action_window(video_data):
 
     # 4. Fallback for shorter videos
     start = float(bodycam_offset) if bodycam_offset > 0 else (0.0 if duration <= 120 else 25.0)
-    dur = min(85.0, float(duration - start))
-    return start, dur, 20.0
+    return clamp_window(start, 20.0, duration)
 
 def build_prompt(video_data, optimal_window=None):
     clean_desc = clean_description(video_data.get("description", ""))

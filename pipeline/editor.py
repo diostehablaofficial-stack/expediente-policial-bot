@@ -129,6 +129,8 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     """
     Downloads high-quality video segment using yt-dlp with PO Token provider on Linux or tv,android on Windows.
     """
+    start_sec = max(0.0, float(start_sec))
+    duration_sec = max(30.0, float(duration_sec))
     end_sec = start_sec + duration_sec
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")

@@ -96,11 +96,11 @@ def get_video_details(video_url, basic_info=None):
         "--dump-json",
         "--skip-download",
         "--no-check-certificates",
+        "--remote-components", "ejs:github",
+        "--extractor-args", "youtube:player_client=tv,android,ios",
     ]
     if os.name != "nt":
         cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
-    else:
-        cmd.extend(["--extractor-args", "youtube:player_client=tv,android"])
 
     if os.path.exists("cookies.txt"):
         cmd.extend(["--cookies", "cookies.txt"])
@@ -116,13 +116,14 @@ def get_video_details(video_url, basic_info=None):
             stderr_msg = proc.stderr.strip()
             print(f"[Detector] dump-json notice: {stderr_msg[:250]}")
             
-            # If blocked by bot-check or login, try secondary fallback client
-            print("[Detector] Trying secondary client fallback (android,ios)...")
+            # If blocked or challenge fails, try secondary fallback client
+            print("[Detector] Trying secondary client fallback (android,ios,tv)...")
             cmd_fb = [
                 sys.executable, "-m", "yt_dlp",
                 "--dump-json",
                 "--skip-download",
                 "--no-check-certificates",
+                "--remote-components", "ejs:github",
                 "--extractor-args", "youtube:player_client=android,ios,tv"
             ]
             if os.path.exists("cookies.txt"):
@@ -134,6 +135,8 @@ def get_video_details(video_url, basic_info=None):
                 data = json.loads(proc_fb.stdout)
                 data["url"] = f"https://www.youtube.com/watch?v={data.get('id', '')}"
                 return data
+            else:
+                print(f"[Detector] Secondary fallback error: {proc_fb.stderr.strip()[:250]}")
 
             if "Sign in to confirm you’re not a bot" in stderr_msg or "Sign in to confirm you're not a bot" in stderr_msg or "LOGIN_REQUIRED" in stderr_msg:
                 print(f"[Detector] Video {video_url} requires login/bot verification. Skipping.")

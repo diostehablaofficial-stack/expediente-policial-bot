@@ -89,16 +89,15 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")
     
-    extra_args = []
+    extra_args = ["--extractor-args", "youtube:player_client=tv,android,ios"]
     if os.name != "nt":
-        extra_args = ["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"]
-    else:
-        extra_args = ["--extractor-args", "youtube:player_client=tv,android"]
+        extra_args.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
     
     # Method 1: Try direct section download
     cmd = [
         sys.executable, "-m", "yt_dlp",
         "-v",
+        "--remote-components", "ejs:github",
         "--download-sections", time_range,
         "--no-check-certificates",
     ] + extra_args + [
@@ -127,6 +126,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     cmd_full = [
         sys.executable, "-m", "yt_dlp",
         "-v",
+        "--remote-components", "ejs:github",
         "--no-check-certificates",
     ] + extra_args + [
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
@@ -145,6 +145,7 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         cmd_fallback = [
             sys.executable, "-m", "yt_dlp",
             "--no-check-certificates",
+            "--remote-components", "ejs:github",
             "--extractor-args", "youtube:player_client=android,ios,tv",
             "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/18/best",
             "--merge-output-format", "mp4",

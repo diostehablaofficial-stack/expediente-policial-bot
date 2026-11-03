@@ -243,5 +243,20 @@
     "facebook_url": "https://www.facebook.com/2355322971891605",
     "status": "published",
     "processed_at": "2026-11-02 18:10:12"
+  },
+  {
+    "case_code": "EXP_024",
+    "video_id": "0Bq5iqS691k",
+    "original_title": "Suspect Keeps Fleeing After Being Tasered During Police Pursuit",
+    "spanish_title": "¡SUSPETO ESCAPA Y ES TOSADO! #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.24_1793666044/EXP_024_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=ARTcsiihvJI",
+    "buffer_post_id": "6ae92c000d3397810d02401d",
+    "instagram_reel_id": "17915232597472189",
+    "instagram_url": "https://www.instagram.com/reel/DfQmv_uhcq-/",
+    "facebook_video_id": "1434760478160486",
+    "facebook_url": "https://www.facebook.com/1434760478160486",
+    "status": "published",
+    "processed_at": "2026-11-03 00:35:24"
   }
 ]

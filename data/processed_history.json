@@ -258,5 +258,20 @@
     "facebook_url": "https://www.facebook.com/1068119862917818",
     "status": "published",
     "processed_at": "2026-11-02 20:00:55"
+  },
+  {
+    "case_code": "EXP_025",
+    "video_id": "qCnEqBheoEY",
+    "original_title": "Two Officers Hit by Friendly Fire After Police Shoot Armed Suspect",
+    "spanish_title": "¡DOS POLICIAS ATACADOS POR SUS PROPIOS TIRADORES! #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.25_1793738900/EXP_025_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=pZMRpTY5BCo",
+    "buffer_post_id": "6aea48991ee1ad0996cbea55",
+    "instagram_reel_id": "18204911941335302",
+    "instagram_url": "https://www.instagram.com/reel/DfSxtnbgHHp/",
+    "facebook_video_id": "4472051016350832",
+    "facebook_url": "https://www.facebook.com/4472051016350832",
+    "status": "published",
+    "processed_at": "2026-11-03 20:49:39"
   }
 ]

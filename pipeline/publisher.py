@@ -273,7 +273,7 @@ def publish_case(video_file, metadata):
     """
     case_code = metadata.get("case_code", "EXP_CASE")
     title = metadata.get("spanish_title", "Expediente Policial")
-    desc = metadata.get("seo_description", "")
+    desc = metadata.get("seo_description") or metadata.get("social_copy") or ""
     
     # 1. Get public URL
     video_url = get_public_video_url(video_file, case_code)

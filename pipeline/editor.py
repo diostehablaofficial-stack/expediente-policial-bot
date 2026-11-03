@@ -89,9 +89,13 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     time_range = f"*{start_sec:.1f}-{end_sec:.1f}"
     print(f"[Editor] Downloading video section {time_range} from {video_url}...")
     
-    extra_args = ["--extractor-args", "youtube:player_client=tv,android,ios"]
-    if os.name != "nt":
-        extra_args.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
+    extra_args = []
+    if os.path.exists("cookies.txt"):
+        extra_args.extend(["--cookies", "cookies.txt"])
+    else:
+        extra_args.extend(["--extractor-args", "youtube:player_client=tv,android"])
+        if os.name != "nt":
+            extra_args.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
     
     # Method 1: Try direct section download
     cmd = [
@@ -104,11 +108,9 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
         "--merge-output-format", "mp4",
         "--force-overwrites",
-        "-o", output_mp4
+        "-o", output_mp4,
+        video_url
     ]
-    if os.path.exists("cookies.txt"):
-        cmd.extend(["--cookies", "cookies.txt"])
-    cmd.append(video_url)
     
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -132,11 +134,9 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
         "--merge-output-format", "mp4",
         "--force-overwrites",
-        "-o", full_temp
+        "-o", full_temp,
+        video_url
     ]
-    if os.path.exists("cookies.txt"):
-        cmd_full.extend(["--cookies", "cookies.txt"])
-    cmd_full.append(video_url)
     
     proc_full = subprocess.run(cmd_full, capture_output=True, text=True)
     if proc_full.returncode != 0:

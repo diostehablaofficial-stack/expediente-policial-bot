@@ -97,13 +97,12 @@ def get_video_details(video_url, basic_info=None):
         "--skip-download",
         "--no-check-certificates",
         "--remote-components", "ejs:github",
-        "--extractor-args", "youtube:player_client=tv,android,ios",
     ]
-    if os.name != "nt":
-        cmd.extend(["--extractor-args", "youtubepot-bgutilhttp:base_url=http://127.0.0.1:4416"])
-
     if os.path.exists("cookies.txt"):
         cmd.extend(["--cookies", "cookies.txt"])
+    else:
+        cmd.extend(["--extractor-args", "youtube:player_client=tv,android"])
+        
     cmd.append(video_url)
 
     try:
@@ -116,7 +115,7 @@ def get_video_details(video_url, basic_info=None):
             stderr_msg = proc.stderr.strip()
             print(f"[Detector] dump-json notice: {stderr_msg[:250]}")
             
-            # If blocked or challenge fails, try secondary fallback client
+            # If blocked or challenge fails, try secondary fallback client without cookies
             print("[Detector] Trying secondary client fallback (android,ios,tv)...")
             cmd_fb = [
                 sys.executable, "-m", "yt_dlp",
@@ -124,11 +123,9 @@ def get_video_details(video_url, basic_info=None):
                 "--skip-download",
                 "--no-check-certificates",
                 "--remote-components", "ejs:github",
-                "--extractor-args", "youtube:player_client=android,ios,tv"
+                "--extractor-args", "youtube:player_client=android,ios,tv",
+                video_url
             ]
-            if os.path.exists("cookies.txt"):
-                cmd_fb.extend(["--cookies", "cookies.txt"])
-            cmd_fb.append(video_url)
             
             proc_fb = subprocess.run(cmd_fb, capture_output=True, text=True, timeout=30)
             if proc_fb.returncode == 0 and proc_fb.stdout.strip():

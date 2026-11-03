@@ -21,7 +21,6 @@ def get_processed_ids(history_file):
     try:
         with open(history_file, "r", encoding="utf-8") as f:
             data = json.load(f)
-            # data can be list of strings or list of dicts
             ids = set()
             for item in data:
                 if isinstance(item, str):
@@ -64,23 +63,31 @@ def fetch_channel_videos():
     except Exception as e:
         print(f"[Detector] RSS feed query failed: {e}. Falling back to yt-dlp...")
 
-    # Method 2: yt-dlp flat playlist
+    return fetch_flat_playlist(limit=15)
+
+def fetch_flat_playlist(limit=60):
+    """
+    Fetches up to `limit` entries using yt-dlp flat-playlist to ensure
+    there is always a candidate available even when recent RSS items are already processed.
+    """
     try:
         cmd = [
             sys.executable, "-m", "yt_dlp", "--flat-playlist", "--dump-single-json",
-            "--playlist-end", "10",
+            "--playlist-end", str(limit),
             CHANNEL_URL
         ]
         out = subprocess.check_output(cmd).decode("utf-8", errors="ignore")
         data = json.loads(out)
+        videos = []
         for e in data.get("entries", []):
-            videos.append({
-                "id": e.get("id"),
-                "title": e.get("title"),
-                "duration": e.get("duration"),
-                "url": f"https://www.youtube.com/watch?v={e.get('id')}"
-            })
-        print(f"[Detector] Found {len(videos)} videos via yt-dlp.")
+            if e.get("id"):
+                videos.append({
+                    "id": e.get("id"),
+                    "title": e.get("title"),
+                    "duration": e.get("duration"),
+                    "url": f"https://www.youtube.com/watch?v={e.get('id')}"
+                })
+        print(f"[Detector] Found {len(videos)} videos via yt-dlp flat playlist (depth={limit}).")
         return videos
     except Exception as e:
         print(f"[Detector] yt-dlp flat-playlist query failed: {e}")
@@ -146,6 +153,7 @@ def get_video_details(video_url, basic_info=None):
 def find_next_candidate(history_file):
     """
     Checks channel videos against processed history and returns the first unprocessed accessible candidate.
+    Guarantees 2 daily uploads: checks newest RSS feed first, and expands to channel backlog if needed.
     """
     processed = get_processed_ids(history_file)
     print(f"[Detector] Loaded {len(processed)} previously processed cases/videos.")
@@ -155,14 +163,10 @@ def find_next_candidate(history_file):
         print("[Detector] No videos retrieved from channel.")
         return None
         
+    # Phase 1: Check newest videos from RSS/recent
     for v in videos:
         vid = v["id"]
-        # Check if video id or case tag matching video id is in processed set
-        if vid in processed:
-            continue
-        # Also check if any processed key contains this video id
-        already_done = any(vid in str(p) for p in processed)
-        if already_done:
+        if vid in processed or any(vid in str(p) for p in processed):
             continue
             
         print(f"[Detector] Testing candidate video: {v['title']} (ID: {vid})...")
@@ -172,10 +176,26 @@ def find_next_candidate(history_file):
             return details
         else:
             print(f"[Detector] Candidate {vid} is not immediately accessible in current environment. Checking next...")
-            
-    print("[Detector] All recent videos have already been processed or are restricted.")
-    return None
 
+    # Phase 2: If all newest entries are processed, expand catalog depth to 60
+    # to guarantee a fresh high-impact video is always published twice a day
+    print("[Detector] Recent videos already processed. Expanding search into channel backlog (depth=60)...")
+    expanded_videos = fetch_flat_playlist(limit=60)
+    for v in expanded_videos:
+        vid = v["id"]
+        if vid in processed or any(vid in str(p) for p in processed):
+            continue
+            
+        print(f"[Detector] Testing catalog candidate: {v['title']} (ID: {vid})...")
+        details = get_video_details(v["url"], basic_info=v)
+        if details:
+            print(f"[Detector] Valid backlog candidate confirmed: {v['title']} (ID: {vid})")
+            return details
+        else:
+            print(f"[Detector] Candidate {vid} is not accessible. Checking next...")
+            
+    print("[Detector] All scanned candidates have been processed.")
+    return None
 
 if __name__ == "__main__":
     hist = os.path.join(os.path.dirname(__file__), "..", "data", "processed_history.json")

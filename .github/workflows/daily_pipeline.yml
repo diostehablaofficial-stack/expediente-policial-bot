@@ -2,8 +2,10 @@ name: Expediente Policial Daily Pipeline
 
 on:
   schedule:
-    # Runs daily at 22:00 UTC (5:00 PM Colombia / UTC-5)
-    - cron: '0 22 * * *'
+    # Runs twice daily at optimal peak engagement windows (separated by 6 hours):
+    # - 18:00 UTC = 1:00 PM Colombia (UTC-5) [Lunchtime peak]
+    # - 00:00 UTC = 7:00 PM Colombia (UTC-5) [Evening prime time peak]
+    - cron: '0 0,18 * * *'
   workflow_dispatch:
     # Allows manual trigger anytime from GitHub Actions tab or via API
 

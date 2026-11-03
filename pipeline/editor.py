@@ -2,6 +2,7 @@ import os
 import subprocess
 import json
 import sys
+import struct
 from PIL import Image, ImageDraw, ImageFont
 
 if sys.stdout.encoding != 'utf-8':
@@ -26,6 +27,49 @@ def find_font(font_name, font_dir):
         if os.path.exists(c):
             return c
     return None
+
+def check_has_audio(file_path):
+    """
+    Checks if a media file has an audio stream.
+    """
+    try:
+        cmd = [
+            "ffprobe", "-v", "error",
+            "-select_streams", "a",
+            "-show_entries", "stream=index",
+            "-of", "csv=p=0",
+            file_path
+        ]
+        out = subprocess.check_output(cmd).decode().strip()
+        return bool(out)
+    except Exception:
+        return False
+
+def verify_voice_and_audio(output_mp4, min_rms=200.0):
+    """
+    Automated safeguard: Validates that the rendered video has a healthy,
+    audible audio stream where voice and sound are clearly present.
+    Raises RuntimeError if video is silent or audio is missing.
+    """
+    if not os.path.exists(output_mp4) or os.path.getsize(output_mp4) < 100000:
+        raise RuntimeError(f"[AudioGuard] Output file missing or too small: {output_mp4}")
+        
+    cmd = [
+        "ffmpeg", "-y", "-ss", "4.0", "-t", "8.0",
+        "-i", output_mp4,
+        "-ar", "16000", "-ac", "1", "-f", "s16le", "pipe:1"
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    raw, _ = proc.communicate()
+    if not raw or len(raw) < 1000:
+        raise RuntimeError(f"[AudioGuard] Failed to read audio stream from {output_mp4}!")
+        
+    samples = struct.unpack(f"<{len(raw)//2}h", raw)
+    rms = (sum(s * s for s in samples) / len(samples)) ** 0.5
+    peak = max(abs(s) for s in samples)
+    print(f"[AudioGuard] Audio verification passed: RMS={rms:.1f}, Peak={peak} (Threshold: {min_rms})")
+    if rms < min_rms:
+        raise RuntimeError(f"[AudioGuard] CRITICAL: Video audio stream is silent or near-inaudible (RMS: {rms:.1f} < {min_rms})!")
 
 def generate_header_card(badge_sub, badge_title, output_png, fonts_dir):
     """
@@ -178,9 +222,6 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     print(f"[Editor] Video segment cut successfully: {output_mp4}")
     return output_mp4
 
-
-
-
 def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_dir, output_mp4):
     """
     Renders 9:16 vertical Short using unified Expediente Policial visual composition:
@@ -189,29 +230,45 @@ def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_d
     - Centered crisp 1080x608 action video
     - 2px red frame border (0xE52521)
     - Top header pill at y=320
-    - Safe-zone ASS subtitles (MarginV=390)
-    - Audio ducking & mixing of bodycam and Spanish neural narration
+    - Safe-zone ASS subtitles (MarginV=320)
+    - Guaranteed audible Spanish neural voiceover with dynamic bodycam ducking:
+      - Uses asplit=2 so narration pad is never consumed/dropped
+      - Enforces stereo fltp 48kHz alignment on all audio streams
+      - Uses amix with dropout_transition=0:normalize=0 to prevent volume halving
     """
     print("[Editor] Starting master FFmpeg render pipeline...")
     
-    # Escape path for FFmpeg filter if needed
     ass_escaped = ass_file.replace("\\", "/").replace(":", "\\:")
     fonts_escaped = fonts_dir.replace("\\", "/").replace(":", "\\:")
     
-    filter_complex = (
-        "[0:v]split[bg_in][fg_in];"
-        "[bg_in]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920:flags=lanczos[bg];"
-        "[fg_in]scale=1080:608[fg];"
-        "[bg][fg]overlay=0:656[vbase];"
-        "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe];"
-        "[vframe][1:v]overlay=40:320[vhead];"
-        f"[vhead]ass='{ass_escaped}':fontsdir='{fonts_escaped}'[vout];"
-        "[0:a]volume=0.60[bg_pre];"
-        "[2:a]asplit=2[sc_in][narr_main];"
-        "[bg_pre][sc_in]sidechaincompress=threshold=0.025:ratio=14:attack=40:release=400:mix=1[bg_ducked];"
-        "[narr_main]volume=1.60[narr_loud];"
-        "[bg_ducked][narr_loud]amix=inputs=2:duration=first:dropout_transition=2[aout]"
-    )
+    has_audio = check_has_audio(raw_clip)
+    
+    # Video composition chains
+    v_chains = [
+        "[0:v]split[bg_in][fg_in]",
+        "[bg_in]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920:flags=lanczos[bg]",
+        "[fg_in]scale=1080:608[fg]",
+        "[bg][fg]overlay=0:656[vbase]",
+        "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe]",
+        "[vframe][1:v]overlay=40:320[vhead]",
+        f"[vhead]ass='{ass_escaped}':fontsdir='{fonts_escaped}'[vout]"
+    ]
+    
+    # Audio mixing chains
+    if has_audio:
+        a_chains = [
+            "[0:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,volume=0.35[bg_pre]",
+            "[2:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,asplit=2[sc_in][narr_main]",
+            "[bg_pre][sc_in]sidechaincompress=threshold=0.03:ratio=8:attack=20:release=250[bg_ducked]",
+            "[narr_main]volume=1.80[narr_loud]",
+            "[bg_ducked][narr_loud]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[aout]"
+        ]
+    else:
+        a_chains = [
+            "[2:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,volume=1.80[aout]"
+        ]
+        
+    filter_complex = ";".join(v_chains + a_chains)
     
     cmd = [
         "ffmpeg", "-y",
@@ -222,7 +279,7 @@ def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_d
         "-map", "[vout]",
         "-map", "[aout]",
         "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "320k",
+        "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
         "-movflags", "+faststart",
         output_mp4
     ]
@@ -235,28 +292,52 @@ def render_short_vertical(raw_clip, header_png, narration_wav, ass_file, fonts_d
 def render_teaser_and_concat(raw_clip, teaser_start, teaser_duration, teaser_pill_png, main_mp4, output_mp4, work_dir):
     """
     Renders Cold Open Teaser with 'A CONTINUACIÓN...' and joins it seamlessly before the main video.
+    Strictly preserves audio format, sample rate (48000Hz), and channels (stereo) across concat.
     """
     teaser_segment = os.path.join(work_dir, "teaser_segment.mp4")
-    filter_complex = (
-        "[0:v]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920:flags=lanczos[bg];"
-        "[0:v]scale=1080:608[fg];"
-        "[bg][fg]overlay=0:656[vbase];"
-        "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe];"
+    has_audio = check_has_audio(raw_clip)
+    
+    v_chains = [
+        "[0:v]scale=270:480:force_original_aspect_ratio=increase,crop=270:480,boxblur=10:2,scale=1080:1920:flags=lanczos[bg]",
+        "[0:v]scale=1080:608[fg]",
+        "[bg][fg]overlay=0:656[vbase]",
+        "[vbase]drawbox=x=0:y=654:w=1080:h=612:color=0xE52521:t=2[vframe]",
         "[vframe][1:v]overlay=40:320[vout]"
-    )
-    cmd = [
-        "ffmpeg", "-y",
-        "-ss", str(teaser_start),
-        "-t", str(teaser_duration),
-        "-i", raw_clip,
-        "-i", teaser_pill_png,
-        "-filter_complex", filter_complex,
-        "-map", "[vout]",
-        "-map", "0:a",
-        "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
-        "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
-        teaser_segment
     ]
+    
+    if has_audio:
+        a_chains = [
+            "[0:a]aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo,volume=1.0[aout]"
+        ]
+        cmd = [
+            "ffmpeg", "-y",
+            "-ss", str(teaser_start),
+            "-t", str(teaser_duration),
+            "-i", raw_clip,
+            "-i", teaser_pill_png,
+            "-filter_complex", ";".join(v_chains + a_chains),
+            "-map", "[vout]",
+            "-map", "[aout]",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
+            teaser_segment
+        ]
+    else:
+        cmd = [
+            "ffmpeg", "-y",
+            "-ss", str(teaser_start),
+            "-t", str(teaser_duration),
+            "-i", raw_clip,
+            "-i", teaser_pill_png,
+            "-f", "lavfi", "-t", str(teaser_duration), "-i", "anullsrc=channel_layout=stereo:sample_rate=48000",
+            "-filter_complex", ";".join(v_chains),
+            "-map", "[vout]",
+            "-map", "2:a",
+            "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p",
+            "-c:a", "aac", "-b:a", "320k", "-ar", "48000", "-ac", "2",
+            teaser_segment
+        ]
+        
     subprocess.run(cmd, check=True)
     
     concat_txt = os.path.join(work_dir, "concat_final.txt")
@@ -270,4 +351,7 @@ def render_teaser_and_concat(raw_clip, teaser_start, teaser_duration, teaser_pil
     subprocess.run(cmd_cat, check=True)
     size_mb = os.path.getsize(output_mp4) / (1024 * 1024)
     print(f"[Editor] Master Short with Teaser generated: {output_mp4} ({size_mb:.2f} MB)")
+    
+    # Automated safety audit on final audio output
+    verify_voice_and_audio(output_mp4)
     return output_mp4

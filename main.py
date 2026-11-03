@@ -12,9 +12,9 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 from pipeline.detector import find_next_candidate
-from pipeline.analyzer import analyze_video
+from pipeline.analyzer import analyze_video, find_optimal_action_window, determine_case_code
 from pipeline.narrator import process_narration
-from pipeline.editor import generate_header_card, generate_teaser_pill, download_video_slice, render_short_vertical, render_teaser_and_concat
+from pipeline.editor import generate_header_card, generate_teaser_pill, download_video_slice, render_short_vertical, render_teaser_and_concat, verify_voice_and_audio
 from pipeline.publisher import publish_case
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -74,34 +74,40 @@ def run_pipeline():
         
     print(f"[Main] Selected candidate: {candidate.get('title')} ({candidate.get('id')})")
     
-    # 2. Analyze & build metadata
-    print("\n[Step 2/5] Analyzing case & generating True Crime Spanish metadata...")
-    metadata = analyze_video(candidate, HISTORY_FILE)
-    case_code = metadata["case_code"]
-    
-    # 3. Generate Narration & Subtitles
-    print("\n[Step 3/5] Synthesizing Spanish neural voiceover and ASS subtitles...")
+    # 2. Determine Optimal Action Window & Download Video Slice First
+    print("\n[Step 2/5] Pinpointing tactical action window & downloading video slice...")
+    case_code = determine_case_code(HISTORY_FILE)
     case_work_dir = os.path.join(WORK_DIR, case_code)
     os.makedirs(case_work_dir, exist_ok=True)
+    
+    opt_start, opt_dur, opt_teaser = find_optimal_action_window(candidate)
+    optimal_window = (opt_start, opt_dur, opt_teaser)
+    
+    raw_clip_mp4 = os.path.join(case_work_dir, "raw_slice.mp4")
+    video_url = candidate.get("url") or f"https://www.youtube.com/watch?v={candidate['id']}"
+    download_video_slice(
+        video_url,
+        opt_start,
+        opt_dur,
+        raw_clip_mp4
+    )
+    
+    # 3. Vision-Grounded Analysis & Metadata Generation
+    print("\n[Step 3/5] Analyzing case & generating Vision-Grounded Spanish script...")
+    metadata = analyze_video(candidate, HISTORY_FILE, raw_clip_mp4=raw_clip_mp4, optimal_window=optimal_window)
+    
+    # 4. Synthesize Spanish Neural Voiceover and ASS Subtitles
+    print("\n[Step 4/5] Synthesizing Spanish neural voiceover and ASS subtitles...")
     narr_res = process_narration(metadata, case_work_dir)
     ass_file = narr_res["ass_file"]
     narr_wav = narr_res["narration_wav"]
     
-    # 4. Download and Edit Short
-    print("\n[Step 4/5] Downloading segment and rendering vertical 9:16 Short...")
+    # 5. Render Vertical 9:16 Short with Cold Open Teaser
+    print("\n[Step 5/5] Downloading segment and rendering vertical 9:16 Short...")
     header_png = os.path.join(case_work_dir, "header.png")
     generate_header_card(metadata["badge_sub"], metadata["badge_title"], header_png, FONTS_DIR)
     
-    raw_clip_mp4 = os.path.join(case_work_dir, "raw_slice.mp4")
-    video_url = metadata.get("video_url") or candidate.get("url") or f"https://www.youtube.com/watch?v={candidate['id']}"
-    download_video_slice(
-        video_url,
-        metadata["slice_start"],
-        metadata["slice_duration"],
-        raw_clip_mp4
-    )
-
-    # 4a. Render main vertical story segment with dynamic audio ducking & subtitles
+    # 5a. Render main vertical story segment with dynamic audio ducking & subtitles
     main_segment_mp4 = os.path.join(case_work_dir, "main_segment.mp4")
     render_short_vertical(
         raw_clip_mp4,
@@ -112,12 +118,12 @@ def run_pipeline():
         main_segment_mp4
     )
 
-    # 4b. Generate Cold Open Teaser ('A CONTINUACIÓN...') and join at start
+    # 5b. Generate Cold Open Teaser ('A CONTINUACIÓN...') and join at start
     teaser_pill_png = os.path.join(case_work_dir, "teaser_pill.png")
     generate_teaser_pill(teaser_pill_png, FONTS_DIR)
     
     output_mp4 = os.path.join(OUTPUT_DIR, f"{case_code}_Short_Vertical.mp4")
-    teaser_start = metadata.get("teaser_start", 25.0)
+    teaser_start = metadata.get("teaser_start", opt_teaser)
     teaser_dur = metadata.get("teaser_duration", 3.5)
     render_teaser_and_concat(
         raw_clip_mp4,
@@ -128,6 +134,9 @@ def run_pipeline():
         output_mp4,
         case_work_dir
     )
+
+    # Validate audio integrity
+    verify_voice_and_audio(output_mp4)
 
     # Save a local copy to user's Shorts folder if running on local Windows machine
     local_shorts_dir = r"C:\Users\Vanes\Downloads\Expediente Policial\Shorts"

@@ -3,6 +3,7 @@ import subprocess
 import json
 import sys
 import struct
+import shutil
 from PIL import Image, ImageDraw, ImageFont
 
 if sys.stdout.encoding != 'utf-8':
@@ -147,14 +148,15 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
         extra_args.extend(["--extractor-args", "youtube:player_client=tv,android,web"])
     
     # Method 1: Try direct section download
+    ytdlp_bin = shutil.which("yt-dlp") or "yt-dlp"
     cmd = [
-        sys.executable, "-m", "yt_dlp",
+        ytdlp_bin,
         "-v",
         "--remote-components", "ejs:github",
         "--download-sections", time_range,
         "--no-check-certificates",
     ] + extra_args + [
-        "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
+        "-f", "18/best[height<=1080]/bestvideo[height<=1080]+bestaudio/best",
         "--merge-output-format", "mp4",
         "--force-overwrites",
         "-o", output_mp4,
@@ -163,24 +165,24 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
-        if proc.returncode == 0 and os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 500000:
-            print(f"[Editor] Video section downloaded directly: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
+        if proc.returncode == 0 and os.path.exists(output_mp4) and os.path.getsize(output_mp4) > 500000 and check_has_audio(output_mp4):
+            print(f"[Editor] Video section downloaded directly with audio: {output_mp4} ({os.path.getsize(output_mp4)/(1024*1024):.2f} MB)")
             return output_mp4
         else:
-            print(f"[Editor] Section download notice:\n{proc.stderr}")
+            print(f"[Editor] Section download incomplete or missing audio. Moving to robust stream download...")
     except Exception as e:
         print(f"[Editor] Section download notice: {e}")
 
     # Method 2: Fallback - download whole video and slice precisely with ffmpeg
-    print(f"[Editor] Downloading full video stream to cut precise slice...")
+    print(f"[Editor] Downloading video stream to cut precise slice...")
     full_temp = output_mp4 + ".full.mp4"
     cmd_full = [
-        sys.executable, "-m", "yt_dlp",
+        ytdlp_bin,
         "-v",
         "--remote-components", "ejs:github",
         "--no-check-certificates",
     ] + extra_args + [
-        "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/best/18",
+        "-f", "18/best[height<=1080]/bestvideo[height<=1080]+bestaudio/best",
         "--merge-output-format", "mp4",
         "--force-overwrites",
         "-o", full_temp,
@@ -189,14 +191,14 @@ def download_video_slice(video_url, start_sec, duration_sec, output_mp4):
     
     proc_full = subprocess.run(cmd_full, capture_output=True, text=True)
     if proc_full.returncode != 0:
-        print(f"[Editor] Notice on full stream: {proc_full.stderr[:300]}")
+        print(f"[Editor] Notice on stream: {proc_full.stderr[:300]}")
         print(f"[Editor] Trying secondary fallback with ios/android clients...")
         cmd_fallback = [
-            sys.executable, "-m", "yt_dlp",
+            ytdlp_bin,
             "--no-check-certificates",
             "--remote-components", "ejs:github",
             "--extractor-args", "youtube:player_client=android,ios,tv",
-            "-f", "bestvideo[height<=1080]+bestaudio/best[height<=1080]/18/best",
+            "-f", "18/best[height<=1080]/best",
             "--merge-output-format", "mp4",
             "--force-overwrites",
         ]

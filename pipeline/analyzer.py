@@ -5,10 +5,18 @@ import requests
 import subprocess
 import struct
 import time
+import base64
+
+ACTION_KEYWORDS = [
+    "shoot", "fire", "shots", "gunfire", "gunshot", "shootout",
+    "attack", "confront", "taser", "k9", "lethal", "pursuit",
+    "chase", "crash", "ram", "breach", "standoff", "hostage",
+    "stab", "knife", "armed", "draws", "unholster", "flee"
+]
 
 def determine_case_code(history_file):
     """
-    Returns e.g. 'EXP_020' based on existing history count.
+    Returns e.g. 'EXP_025' based on existing history count.
     """
     count = 19
     if os.path.exists(history_file):
@@ -65,10 +73,10 @@ def clean_description(raw_desc):
 def find_optimal_action_window(video_data):
     """
     Intelligently identifies the exact tactical action window:
-    1. Checks official YouTube chapters for gunfight/bodycam keywords.
-    2. Checks description text for timestamps.
-    3. If long video (>120s) with no timestamps, downloads low-bitrate audio in seconds
-       and calculates transient peak + RMS density to pinpoint where the shooting/taser/confrontation begins.
+    1. Checks official YouTube chapters for explicit gunfight/tactical action keywords.
+    2. Checks description text for timestamps matching action keywords.
+    3. Scans low-bitrate audio for gunshot bursts and acoustic transients (crest factor).
+    4. If multi-officer bodycam video, aligns window to the active confrontation camera.
     """
     duration = int(video_data.get("duration") or 180)
     chapters = video_data.get("chapters") or []
@@ -79,29 +87,30 @@ def find_optimal_action_window(video_data):
             return 0.0, dur_total, max(1.0, dur_total / 2.0)
         max_start = max(0.0, dur_total - 45.0)
         safe_start = max(0.0, min(float(start), max_start))
-        safe_dur = max(35.0, min(85.0, dur_total - safe_start))
-        safe_teaser = max(3.0, min(float(teaser), safe_dur - 3.0))
+        safe_dur = max(45.0, min(75.0, dur_total - safe_start))
+        safe_teaser = max(5.0, min(float(teaser), safe_dur - 4.0))
         return safe_start, safe_dur, safe_teaser
     
-    # 1. Check official chapters
+    # 1. Check official chapters for explicit action keywords
     climax_hint = None
-    bodycam_offset = 0
+    officer_chapters = []
     for ch in chapters:
         t = ch.get("title", "").lower()
         st = int(ch.get("start_time", 0))
         if st >= duration - 15:
             continue
-        if bodycam_offset == 0 and any(k in t for k in ["bodycam", "dashcam", "officer"]):
-            bodycam_offset = st
-        if any(k in t for k in ["shoot", "fire", "shots", "attack", "confront", "taser", "k9", "lethal", "board"]):
+        if any(k in t for k in ["officer", "bodycam", "dashcam"]) and not any(k in t for k in ["patreon", "support", "credit"]):
+            officer_chapters.append((st, ch.get("title", "")))
+        if any(k in t for k in ACTION_KEYWORDS):
             if climax_hint is None or st > climax_hint:
                 climax_hint = st
 
-    if climax_hint and climax_hint > 35:
-        start = max(0.0, float(climax_hint - 35))
-        return clamp_window(start, 35.0, duration)
+    if climax_hint and climax_hint > 20:
+        start = max(0.0, float(climax_hint - 20))
+        teaser = min(20.0, float(climax_hint - start))
+        return clamp_window(start, teaser, duration)
 
-    # 2. Check description timestamps (must start at line head, not time-of-day mentions like 11:09 pm)
+    # 2. Check description timestamps for explicit action keywords (NOT "bodycam" or "officer"!)
     desc = video_data.get("description", "")
     pattern = re.compile(r'^\s*(?:\[|\()?(\d{1,2}):(\d{2})(?::(\d{2}))?(?:\]|\))?\s*[-–—:]?\s*(.+)$', re.IGNORECASE)
     for line in desc.splitlines():
@@ -117,15 +126,16 @@ def find_optimal_action_window(video_data):
             if st >= duration - 15 or st < 0:
                 continue
             t = m.group(4).lower()
-            if any(k in t for k in ["shoot", "fire", "shots", "attack", "confront", "taser", "k9", "bodycam"]):
-                start = max(0.0, float(st - 35))
-                return clamp_window(start, 35.0, duration)
+            if any(k in t for k in ACTION_KEYWORDS):
+                start = max(0.0, float(st - 20))
+                teaser = min(20.0, float(st - start))
+                return clamp_window(start, teaser, duration)
 
-    # 3. Audio peak scan for long videos (> 120s)
+    # 3. Audio gunshot & transient burst scan for videos > 120s
     vid_id = video_data.get("id", "")
     video_url = video_data.get("url") or (f"https://www.youtube.com/watch?v={vid_id}" if vid_id else None)
     if duration > 120 and video_url:
-        print("[ActionFinder] Video is long with no chapter markers. Running audio tactical peak analysis...")
+        print("[ActionFinder] Scanning audio for tactical peak/gunshot burst analysis...")
         os.makedirs("work", exist_ok=True)
         tmp_audio = os.path.join("work", f"temp_scan_{int(time.time())}.webm")
         cmd = [
@@ -153,35 +163,41 @@ def find_optimal_action_window(video_data):
                 raw, _ = proc.communicate()
                 samples = struct.unpack(f"<{len(raw)//2}h", raw)
                 rate = 8000
-                sec_stats = []
+                sec_scores = []
                 for i in range(0, len(samples) - rate, rate):
                     chunk = samples[i:i+rate]
                     rms = (sum(s*s for s in chunk) / len(chunk)) ** 0.5
-                    peaks = sum(1 for s in chunk if abs(s) > 20000)
-                    sec_stats.append((rms, peaks))
+                    peak_max = max(abs(s) for s in chunk)
+                    peaks_24k = sum(1 for s in chunk if abs(s) > 24000)
+                    crest = peak_max / (rms + 1e-5)
+                    # Transient burst score distinguishes brief gunshots from sustained sirens
+                    burst_score = (peaks_24k ** 1.2) * (crest ** 1.5)
+                    sec_scores.append((i // rate, burst_score, peaks_24k, peak_max, rms))
 
                 win_len = 75
                 best_start = 0
                 best_score = -1
-                for s_idx in range(0, len(sec_stats) - win_len, 5):
-                    sub = sec_stats[s_idx:s_idx+win_len]
-                    trans = sum(x[1] for x in sub)
-                    rms_avg = sum(x[0] for x in sub) / win_len
-                    score = trans * 10 + rms_avg
-                    if score > best_score:
-                        best_score = score
+                for s_idx in range(0, len(sec_scores) - win_len, 5):
+                    sub = sec_scores[s_idx:s_idx+win_len]
+                    w_score = sum(x[1] for x in sub)
+                    if w_score > best_score:
+                        best_score = w_score
                         best_start = s_idx
 
-                # Find peak second inside winning window for teaser
-                sub_win = sec_stats[best_start:best_start+win_len]
-                max_bin = max(range(len(sub_win)), key=lambda i: sub_win[i][1])
-                teaser_start = max(5.0, min(float(max_bin), 45.0))
+                # Find peak burst second inside window for teaser
+                sub_win = sec_scores[best_start:best_start+win_len]
+                max_sub = max(sub_win, key=lambda x: x[1])
+                burst_peak_abs = max_sub[0]
 
-                try:
-                    os.remove(tmp_audio)
-                except Exception:
-                    pass
+                # If multiple officer chapters exist, align start to the chapter containing the confrontation
+                if len(officer_chapters) >= 2:
+                    for ch_st, ch_name in reversed(officer_chapters):
+                        if ch_st <= burst_peak_abs and ch_st >= best_start - 15:
+                            print(f"[ActionFinder] Aligned cut to start of chapter '{ch_name}' at {ch_st}s")
+                            best_start = ch_st
+                            break
 
+                teaser_start = max(5.0, min(float(burst_peak_abs - best_start), 40.0))
                 print(f"[ActionFinder] Pinpointed action: start={best_start}s, teaser={teaser_start}s")
                 return clamp_window(best_start, teaser_start, duration)
         except Exception as e:
@@ -193,11 +209,38 @@ def find_optimal_action_window(video_data):
                 except Exception:
                     pass
 
-    # 4. Fallback for shorter videos
-    start = float(bodycam_offset) if bodycam_offset > 0 else (0.0 if duration <= 120 else 25.0)
+    # 4. Fallback for multi-officer chapters: pick the last active officer before credits
+    if len(officer_chapters) >= 2:
+        last_ch_st, last_ch_name = officer_chapters[-1]
+        print(f"[ActionFinder] Chapter fallback: picking final active officer camera '{last_ch_name}' at {last_ch_st}s")
+        return clamp_window(last_ch_st, 20.0, duration)
+
+    # 5. Default fallback
+    start = 0.0 if duration <= 90 else 25.0
     return clamp_window(start, 20.0, duration)
 
-def build_prompt(video_data, optimal_window=None):
+def extract_frame_base64(video_path, timestamp_sec):
+    """
+    Extracts a JPEG frame at timestamp_sec from video_path scaled to 640px and returns base64 string.
+    """
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", f"{timestamp_sec:.2f}",
+        "-i", video_path,
+        "-vframes", "1",
+        "-vf", "scale=640:-1",
+        "-q:v", "3",
+        "-f", "image2pipe",
+        "-vcodec", "mjpeg",
+        "pipe:1"
+    ]
+    proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    img_bytes, _ = proc.communicate()
+    if img_bytes and len(img_bytes) > 500:
+        return base64.b64encode(img_bytes).decode("utf-8")
+    return None
+
+def build_prompt(video_data, optimal_window=None, dynamic_timestamps=None):
     clean_desc = clean_description(video_data.get("description", ""))
     duration = int(video_data.get("duration", 180))
     chapters = video_data.get("chapters") or []
@@ -206,6 +249,15 @@ def build_prompt(video_data, optimal_window=None):
         suggested_start, slice_dur, teaser_start = optimal_window
     else:
         suggested_start, slice_dur, teaser_start = find_optimal_action_window(video_data)
+
+    if not dynamic_timestamps:
+        t1 = 1.0
+        t2 = max(8.0, teaser_start - 6.0)
+        t3 = teaser_start
+        t4 = min(teaser_start + 16.0, slice_dur - 14.0)
+        t5 = slice_dur - 7.0
+    else:
+        t1, t2, t3, t4, t5 = dynamic_timestamps
         
     chapters_formatted = []
     for ch in chapters:
@@ -214,7 +266,7 @@ def build_prompt(video_data, optimal_window=None):
         chapters_formatted.append(f"- {st}s ({st//60}:{st%60:02d}): {t}")
     chapters_text = "\n".join(chapters_formatted) if chapters_formatted else "Sin marcas de capítulo en el video original."
 
-    prompt = f"""Eres el director audiovisual y guionista forense de 'Expediente Policial' (canal de documentales True Crime de alta producción en español).
+    prompt = f"""Eres el director audiovisual y guionista forense de 'Expediente Policial' (documentales True Crime policiales en español neutro).
 Analiza este caso policial real de PoliceActivity:
 
 Título original: {video_data.get('title')}
@@ -229,22 +281,23 @@ REGLAS DE ORO DEL MONTAJE:
 1. SELECCIÓN DEL CORTE EXACTO ('slice_start' y 'slice_duration'):
    - Análisis acústico y táctico verificado: La confrontación real y los hechos críticos ocurren entre los segundos {suggested_start:.0f} y {suggested_start + slice_dur:.0f}.
    - Usa EXACTAMENTE: slice_start={suggested_start:.0f}, slice_duration={slice_dur:.0f}.
-   - El objetivo es mostrar la acción directa con precisión absoluta, sin tomas vacías ni traslados previos.
-
-2. GANCHO 'A CONTINUACIÓN...' ('teaser_start' y 'teaser_duration'):
-   - 'teaser_start': {teaser_start:.1f} (segundo exacto relativo dentro del corte donde ocurre el momento más visual e impactante).
+   - 'teaser_start': {teaser_start:.1f} (momento exacto relativo dentro del corte donde ocurre el clímax visual de la acción).
    - 'teaser_duration': 3.5.
 
-3. NARRACIÓN MILIMÉTRICAMENTE SINCRONIZADA ('narrations'):
-   - Exactamente 5 intervenciones concisas y periodísticas en español neutro.
-   - 'start': segundo exacto dentro del corte donde la voz empieza (ej: 1.0, 14.0, 32.0, 52.0, 72.0).
-   - Cada frase DEBE describir con total veracidad y exactitud lo que se está viendo en pantalla en ese momento preciso.
+2. NARRACIÓN MILIMÉTRICAMENTE SINCRONIZADA CON LA PANTALLA:
+   - Exactamente 5 intervenciones periodísticas concisas en español neutro (entre 12 y 18 palabras cada una).
+   - Los timestamps de inicio DEBEN ser exactamente: [{t1:.1f}, {t2:.1f}, {t3:.1f}, {t4:.1f}, {t5:.1f}].
+   - {t1:.1f}s: Aproximación táctica inicial de los oficiales al lugar de los hechos.
+   - {t2:.1f}s: Despliegue de armas, órdenes policiales y preparación previa al contacto directo.
+   - {t3:.1f}s: EL CLÍMAX VISUAL EXACTO (disparos, taseo, forcejeo, impacto o emboscada).
+   - {t4:.1f}s: Respuesta policial inmediata, repliegue bajo fuego cruzado y cobertura.
+   - {t5:.1f}s: Control de la amenaza, auxilio médico e invitación a suscribirse a Expediente Policial.
 
-4. BANNERS Y TÍTULOS:
+3. BANNERS Y TÍTULOS:
    - 'spanish_title': Título impactante en mayúsculas (máximo 80 caracteres), con #Shorts.
    - 'badge_sub': "CASO REAL | [DEPARTAMENTO POLICIAL / CIUDAD]" (máx 40 caracteres).
    - 'badge_title': Titular principal en mayúsculas (máx 35 caracteres, ej. "TIROS TRAS TASEO EN LA CERCA").
-   - 'seo_description': Resumen forense completo con hashtags (#ExpedientePolicial #CasoReal #Dashcam #Bodycam #Shorts #Reels #Policias).
+   - 'seo_description': Resumen forense completo con hashtags (#ExpedientePolicial #CasoReal #Dashcam #Bodycam #Shorts).
 
 Devuelve ÚNICAMENTE un objeto JSON válido (sin backticks markdown ```json, solo las llaves {{...}}):
 {{
@@ -257,20 +310,97 @@ Devuelve ÚNICAMENTE un objeto JSON válido (sin backticks markdown ```json, sol
   "teaser_start": {teaser_start:.1f},
   "teaser_duration": 3.5,
   "narrations": [
-    {{"id": "narr_01", "start": 1.0, "text": "Texto apertura..."}},
-    {{"id": "narr_02", "start": 15.0, "text": "Texto conflicto..."}},
-    {{"id": "narr_03", "start": 35.0, "text": "Texto acción..."}},
-    {{"id": "narr_04", "start": 52.0, "text": "Texto clímax..."}},
-    {{"id": "narr_05", "start": 72.0, "text": "Resolución y llamado a suscribirse a Expediente Policial."}}
+    {{"id": "narr_01", "start": {t1:.1f}, "text": "Texto aproximación inicial..."}},
+    {{"id": "narr_02", "start": {t2:.1f}, "text": "Texto desenfunde y órdenes policiales..."}},
+    {{"id": "narr_03", "start": {t3:.1f}, "text": "Texto momento crítico de disparos o acción..."}},
+    {{"id": "narr_04", "start": {t4:.1f}, "text": "Texto oficiales bajo fuego y repliegue..."}},
+    {{"id": "narr_05", "start": {t5:.1f}, "text": "Resolución y llamado a suscribirse a Expediente Policial."}}
   ]
 }}"""
     return prompt, suggested_start, slice_dur
 
-def analyze_with_groq(api_key, video_data, optimal_window=None):
+def analyze_with_gemini_vision(api_key, video_data, optimal_window, frames_b64, timestamps):
+    """
+    Multimodal Vision script generator: Inspects the 5 actual video frames of the cut
+    and writes 5 narrations describing exactly what is on screen at each timestamp.
+    """
+    suggested_start, slice_dur, teaser_start = optimal_window
+    clean_desc = clean_description(video_data.get("description", ""))
+    t1, t2, t3, t4, t5 = timestamps
+
+    prompt = f"""Eres el director audiovisual y guionista forense de 'Expediente Policial' (documentales True Crime policiales en español neutro).
+Analiza este caso policial real de PoliceActivity:
+Título original: {video_data.get('title')}
+Descripción del caso:
+{clean_desc[:2500]}
+
+Tienes adjuntos 5 FOTOGRAMAS REALES del video extraídos en los segundos exactos:
+- Fotograma 1: {t1:.1f}s (Aproximación inicial)
+- Fotograma 2: {t2:.1f}s (Llegada al punto crítico)
+- Fotograma 3: {t3:.1f}s (Momento de máxima acción / disparos / confrontación)
+- Fotograma 4: {t4:.1f}s (Reacción táctica / cobertura / heridos)
+- Fotograma 5: {t5:.1f}s (Desenlace / control del área)
+
+REGLAS DE SINCRONIZACIÓN VISUAL OBLIGATORIA:
+1. CADA FRASE DEBE DESCRIBIR CON EXACTITUD LO QUE SE OBSERVA EN SU FOTOGRAMA CORRESPONDIENTE.
+   - En la frase 1 ({t1:.1f}s), describe exactamente la acción del Fotograma 1.
+   - En la frase 2 ({t2:.1f}s), describe exactamente lo que ocurre en el Fotograma 2.
+   - En la frase 3 ({t3:.1f}s), narra la confrontación crítica visible en el Fotograma 3.
+   - En la frase 4 ({t4:.1f}s), narra la situación visible en el Fotograma 4.
+   - En la frase 5 ({t5:.1f}s), resume el desenlace visible en el Fotograma 5 e invita a suscribirse a Expediente Policial.
+2. Cada frase debe tener entre 12 y 18 palabras en español neutro, tono periodístico y forense.
+3. El arreglo 'narrations' DEBE tener exactamente 5 elementos con 'start' fijados en [{t1:.1f}, {t2:.1f}, {t3:.1f}, {t4:.1f}, {t5:.1f}].
+
+Devuelve un JSON con:
+- spanish_title (máx 80 caracteres con #Shorts)
+- badge_sub (CASO REAL | [CIUDAD/POLICÍA])
+- badge_title (titular en mayúsculas máx 35 caracteres)
+- seo_description (resumen forense con hashtags)
+- slice_start: {suggested_start:.0f}
+- slice_duration: {slice_dur:.0f}
+- teaser_start: {teaser_start:.1f}
+- teaser_duration: 3.5
+- narrations: lista de 5 objetos con id, start y text
+"""
+    parts = [{"text": prompt}]
+    for b64 in frames_b64:
+        parts.append({
+            "inline_data": {
+                "mime_type": "image/jpeg",
+                "data": b64
+            }
+        })
+
+    payload = {
+        "contents": [{"parts": parts}],
+        "generationConfig": {
+            "temperature": 0.2,
+            "response_mime_type": "application/json"
+        }
+    }
+
+    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    for mod in models:
+        try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={api_key}"
+            r = requests.post(url, json=payload, headers={"Content-Type": "application/json"}, timeout=45)
+            if r.status_code == 200:
+                raw_json = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+                data = json.loads(raw_json)
+                print(f"[Analyzer] Gemini Vision ({mod}) generated perfectly vision-grounded script!")
+                return data
+            else:
+                print(f"[Analyzer] Gemini Vision ({mod}) failed: {r.status_code} - {r.text[:120]}")
+        except Exception as e:
+            print(f"[Analyzer] Gemini Vision error with {mod}: {e}")
+
+    return None
+
+def analyze_with_groq(api_key, video_data, optimal_window=None, dynamic_timestamps=None):
     """
     Uses Groq (ultra-fast Llama/OpenAI-compatible models) to generate metadata.
     """
-    prompt, suggested_start, slice_dur = build_prompt(video_data, optimal_window)
+    prompt, suggested_start, slice_dur = build_prompt(video_data, optimal_window, dynamic_timestamps)
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
@@ -307,11 +437,11 @@ def analyze_with_groq(api_key, video_data, optimal_window=None):
             
     return None
 
-def analyze_with_gemini(api_key, video_data, optimal_window=None):
+def analyze_with_gemini(api_key, video_data, optimal_window=None, dynamic_timestamps=None):
     """
-    Uses Gemini API (1.5 Flash / 2.0 Flash) to generate metadata.
+    Uses Gemini API (1.5 Flash / 2.0 Flash) text endpoint.
     """
-    prompt, suggested_start, slice_dur = build_prompt(video_data, optimal_window)
+    prompt, suggested_start, slice_dur = build_prompt(video_data, optimal_window, dynamic_timestamps)
     models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
@@ -337,7 +467,7 @@ def analyze_with_gemini(api_key, video_data, optimal_window=None):
             
     return None
 
-def analyze_rule_based(video_data, optimal_window=None):
+def analyze_rule_based(video_data, optimal_window=None, dynamic_timestamps=None):
     title = video_data.get("title", "Intervención Policial de Alto Riesgo")
     desc = clean_description(video_data.get("description", ""))
     duration = int(video_data.get("duration", 180))
@@ -346,6 +476,15 @@ def analyze_rule_based(video_data, optimal_window=None):
         slice_start, slice_dur, teaser_start = optimal_window
     else:
         slice_start, slice_dur, teaser_start = find_optimal_action_window(video_data)
+
+    if not dynamic_timestamps:
+        t1 = 1.0
+        t2 = max(8.0, teaser_start - 6.0)
+        t3 = teaser_start
+        t4 = min(teaser_start + 16.0, slice_dur - 14.0)
+        t5 = slice_dur - 7.0
+    else:
+        t1, t2, t3, t4, t5 = dynamic_timestamps
 
     loc_match = re.search(r"^([^\n—–\-]+(?:County|City|Department|Parish|Police|State|Town)?[^—–\-]*)", desc)
     raw_loc = loc_match.group(1).strip() if loc_match else "ESTADOS UNIDOS"
@@ -370,11 +509,11 @@ def analyze_rule_based(video_data, optimal_window=None):
     spanish_title = f"¡{badge_title}! | CASO REAL #Shorts"
     
     narrations = [
-        {"id": "narr_01", "start": 1.0, "text": f"Una peligrosa intervención táctica se desata en {location}."},
-        {"id": "narr_02", "start": 14.0, "text": "Los oficiales avanzan para cercar al sospechoso y ordenan que se rinda."},
-        {"id": "narr_03", "start": 34.0, "text": "¡De imprevisto el sujeto abre fuego contra los agentes a quemarropa!"},
-        {"id": "narr_04", "start": 54.0, "text": "Los policías responden a los disparos y aseguran el perímetro bajo fuego cruzado."},
-        {"id": "narr_05", "start": 74.0, "text": "La amenaza es neutralizada y el agresor puesto bajo custodia. Suscríbete a Expediente Policial."}
+        {"id": "narr_01", "start": t1, "text": f"Oficiales intervienen tácticamente en {location} tras rastrear una amenaza armada."},
+        {"id": "narr_02", "start": t2, "text": "Los agentes avanzan con armas desenfundadas exigiendo al sospechoso que se entregue."},
+        {"id": "narr_03", "start": t3, "text": "¡De imprevisto el sujeto abre fuego a quemarropa desatando una lluvia de disparos!"},
+        {"id": "narr_04", "start": t4, "text": "Los oficiales responden de inmediato y se repliegan para buscar cobertura bajo fuego cruzado."},
+        {"id": "narr_05", "start": t5, "text": "El perímetro es asegurado y la amenaza neutralizada. Suscríbete a Expediente Policial."}
     ]
 
     seo_description = f"""Cámara corporal y análisis táctico oficial de los hechos ocurridos en {location}.
@@ -395,35 +534,63 @@ def analyze_rule_based(video_data, optimal_window=None):
         "narrations": narrations
     }
 
-def analyze_video(video_data, history_file):
+def analyze_video(video_data, history_file, raw_clip_mp4=None, optimal_window=None):
     case_code = determine_case_code(history_file)
     print(f"[Analyzer] Processing case {case_code} for '{video_data.get('title')}'")
     
-    # 1. Pre-calculate optimal tactical action window
-    opt_start, opt_dur, opt_teaser = find_optimal_action_window(video_data)
-    optimal_window = (opt_start, opt_dur, opt_teaser)
+    # 1. Pre-calculate optimal tactical action window if not provided
+    if not optimal_window:
+        opt_start, opt_dur, opt_teaser = find_optimal_action_window(video_data)
+        optimal_window = (opt_start, opt_dur, opt_teaser)
+    else:
+        opt_start, opt_dur, opt_teaser = optimal_window
+
+    # Dynamic narration timestamps aligned with action
+    t1 = 1.0
+    t2 = max(8.0, opt_teaser - 6.0)
+    t3 = opt_teaser
+    t4 = min(opt_teaser + 16.0, opt_dur - 14.0)
+    t5 = opt_dur - 7.0
+    timestamps = [t1, t2, t3, t4, t5]
     
     result = None
     groq_key = os.environ.get("GROQ_API_KEY")
     gemini_key = os.environ.get("GEMINI_API_KEY")
-    
-    if groq_key:
-        print("[Analyzer] GROQ_API_KEY detected. Running AI True Crime script generation...")
-        result = analyze_with_groq(groq_key, video_data, optimal_window)
+
+    # If raw clip is provided, attempt Multimodal Vision grounding with Gemini
+    if raw_clip_mp4 and os.path.exists(raw_clip_mp4) and gemini_key:
+        print("[Analyzer] Extracting 5 slice keyframes for Multimodal Vision-Grounded AI Scripting...")
+        frames_b64 = []
+        for ts in timestamps:
+            b64 = extract_frame_base64(raw_clip_mp4, ts)
+            if b64:
+                frames_b64.append(b64)
+        if len(frames_b64) == 5:
+            print("[Analyzer] Running Gemini Multimodal Vision analysis on extracted frames...")
+            result = analyze_with_gemini_vision(gemini_key, video_data, optimal_window, frames_b64, timestamps)
+
+    if not result and groq_key:
+        print("[Analyzer] Running Groq AI True Crime script generation with dynamic timeline anchoring...")
+        result = analyze_with_groq(groq_key, video_data, optimal_window, timestamps)
         
     if not result and gemini_key:
-        print("[Analyzer] Running Gemini AI script generation...")
-        result = analyze_with_gemini(gemini_key, video_data, optimal_window)
+        print("[Analyzer] Running Gemini text AI script generation...")
+        result = analyze_with_gemini(gemini_key, video_data, optimal_window, timestamps)
         
     if not result:
         print("[Analyzer] Falling back to intelligent rule-based engine...")
-        result = analyze_rule_based(video_data, optimal_window)
+        result = analyze_rule_based(video_data, optimal_window, timestamps)
         
-    # Enforce verified tactical window so the final cut never shows empty highway driving
+    # Enforce verified tactical window
     result["slice_start"] = opt_start
     result["slice_duration"] = opt_dur
     if not result.get("teaser_start") or result["teaser_start"] < 5.0 or result["teaser_start"] > opt_dur - 4.0:
         result["teaser_start"] = opt_teaser
+
+    # Enforce synchronized narration timestamps
+    for i, narr in enumerate(result.get("narrations", [])):
+        if i < len(timestamps):
+            narr["start"] = timestamps[i]
 
     result["case_code"] = case_code
     result["video_id"] = video_data.get("id")
@@ -434,4 +601,6 @@ def analyze_video(video_data, history_file):
     print(f"[Analyzer] Ready: [{case_code}] {result['spanish_title']}")
     print(f"[Analyzer] Badge Sub: {result['badge_sub']} | Badge Title: {result['badge_title']}")
     print(f"[Analyzer] Slice: start={result['slice_start']}s, dur={result['slice_duration']}s | Teaser: {result['teaser_start']}s")
+    for i, narr in enumerate(result.get("narrations", [])):
+        print(f"    [Narration {i+1}] {narr.get('start', 0.0):.1f}s: {narr.get('text', '')[:50]}...")
     return result

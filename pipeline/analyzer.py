@@ -62,7 +62,7 @@ def clean_description(raw_desc):
 def build_prompt(video_data):
     clean_desc = clean_description(video_data.get("description", ""))
     duration = int(video_data.get("duration", 180))
-    chapters = video_data.get("chapters", [])
+    chapters = video_data.get("chapters") or []
     
     bodycam_offset = 0
     climax_hint = None

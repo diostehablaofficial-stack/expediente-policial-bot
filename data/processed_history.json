@@ -273,5 +273,20 @@
     "facebook_url": "https://www.facebook.com/4472051016350832",
     "status": "published_perfect",
     "processed_at": "2026-11-03 20:49:39"
+  },
+  {
+    "case_code": "EXP_026",
+    "video_id": "LYgVVd02uaM",
+    "original_title": "Officer Opens Fire as Suspect Charges With Metal Rods",
+    "spanish_title": "¡TIROTEO CONTRA OFICIALES! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.26_1793752169/EXP_026_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=RCVeoeJqw2I",
+    "buffer_post_id": "6aea7c6e4c41ba80aa4a68fa",
+    "instagram_reel_id": "17918641227261057",
+    "instagram_url": "https://www.instagram.com/reel/DfTLBYHys5F/",
+    "facebook_video_id": "2143046476337553",
+    "facebook_url": "https://www.facebook.com/2143046476337553",
+    "status": "published",
+    "processed_at": "2026-11-04 00:30:41"
   }
 ]

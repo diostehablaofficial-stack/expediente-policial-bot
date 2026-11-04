@@ -288,5 +288,20 @@
     "facebook_url": "https://www.facebook.com/2143046476337553",
     "status": "published",
     "processed_at": "2026-11-04 00:30:41"
+  },
+  {
+    "case_code": "EXP_027",
+    "video_id": "K2vaMPmvLY0",
+    "original_title": "Jacksonville Officers Shoot Woman Who Fired at Them",
+    "spanish_title": "DISPAROS A LA PATRULLA EN JACKSONVILLE | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.27_1793821289/EXP_027_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=I9bq5dsyhRg",
+    "buffer_post_id": "6aeb8acb1310dbd9d43fc809",
+    "instagram_reel_id": "18032794718683689",
+    "instagram_url": "https://www.instagram.com/reel/DfVPCgxpV_O/",
+    "facebook_video_id": "1401571301731030",
+    "facebook_url": "https://www.facebook.com/1401571301731030",
+    "status": "published",
+    "processed_at": "2026-11-04 14:44:23"
   }
 ]

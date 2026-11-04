@@ -25,6 +25,8 @@ jobs:
 
       - name: Set up Cloudflare WARP (Bypasses Datacenter IP Restrictions)
         uses: fscarmen/warp-on-actions@v1.4
+        timeout-minutes: 3
+        continue-on-error: true
         with:
           stack: dual
           mode: wireguard

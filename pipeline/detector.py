@@ -2,8 +2,15 @@ import json
 import os
 import sys
 import subprocess
+import shutil
 import requests
 import xml.etree.ElementTree as ET
+
+def get_ytdlp_cmd():
+    bin_path = shutil.which("yt-dlp")
+    if bin_path:
+        return [bin_path]
+    return [sys.executable, "-m", "yt_dlp"]
 
 if sys.stdout.encoding != 'utf-8':
     try:
@@ -71,8 +78,8 @@ def fetch_flat_playlist(limit=60):
     there is always a candidate available even when recent RSS items are already processed.
     """
     try:
-        cmd = [
-            sys.executable, "-m", "yt_dlp", "--flat-playlist", "--dump-single-json",
+        cmd = get_ytdlp_cmd() + [
+            "--flat-playlist", "--dump-single-json",
             "--playlist-end", str(limit),
             CHANNEL_URL
         ]
@@ -112,8 +119,7 @@ def get_video_details(video_url, basic_info=None):
     Validates that the video streams are accessible. Returns None if video is blocked/requires login.
     """
     def run_dump(use_cookies=True):
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
+        cmd = get_ytdlp_cmd() + [
             "--dump-json",
             "--skip-download",
             "--no-check-certificates",
@@ -149,8 +155,7 @@ def get_video_details(video_url, basic_info=None):
                 return data
                 
         # Secondary fallback: try client rotation with POT provider
-        cmd_fb = [
-            sys.executable, "-m", "yt_dlp",
+        cmd_fb = get_ytdlp_cmd() + [
             "--dump-json",
             "--skip-download",
             "--no-check-certificates",

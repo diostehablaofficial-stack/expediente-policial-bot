@@ -4,6 +4,12 @@ import json
 import time
 import shutil
 
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except Exception:
+    pass
+
 # Ensure UTF-8 output
 if sys.stdout.encoding != 'utf-8':
     try:

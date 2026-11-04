@@ -174,6 +174,32 @@ def find_optimal_action_window(video_data):
                     burst_score = (peaks_24k ** 1.2) * (crest ** 1.5)
                     sec_scores.append((i // rate, burst_score, peaks_24k, peak_max, rms))
 
+                # Priority 1: Multi-officer bodycam videos. In these videos, the confrontation
+                # always occurs in Officer 1's camera right before Officer 2's chapter starts.
+                if len(officer_chapters) >= 2:
+                    ch2_st = officer_chapters[1][0]
+                    search_min = max(0, ch2_st - 60)
+                    search_max = min(duration, ch2_st + 10)
+                    officer1_bursts = [x for x in sec_scores if search_min <= x[0] <= search_max]
+                    if officer1_bursts:
+                        best_burst = max(officer1_bursts, key=lambda x: x[1])
+                        burst_peak_abs = best_burst[0]
+                        best_start = max(0.0, float(burst_peak_abs - 30.0))
+                        teaser_start = max(5.0, min(float(burst_peak_abs - best_start), 35.0))
+                        print(f"[ActionFinder] Multi-officer confrontation pinpoint: burst at {burst_peak_abs}s, start={best_start}s, teaser={teaser_start}s")
+                        return clamp_window(best_start, teaser_start, duration)
+
+                # Priority 2: Standard single-officer video transient peak
+                # Filter out sustained sirens (where rms > 7000 over many seconds) and find peak burst
+                filtered_bursts = [x for x in sec_scores if x[4] < 7500 or x[1] > 300]
+                if filtered_bursts:
+                    top_burst = max(filtered_bursts, key=lambda x: x[1])
+                    burst_peak_abs = top_burst[0]
+                    best_start = max(0.0, float(burst_peak_abs - 25.0))
+                    teaser_start = max(5.0, min(float(burst_peak_abs - best_start), 35.0))
+                    print(f"[ActionFinder] Acoustic transient pinpoint: burst at {burst_peak_abs}s, start={best_start}s, teaser={teaser_start}s")
+                    return clamp_window(best_start, teaser_start, duration)
+
                 win_len = 75
                 best_start = 0
                 best_score = -1
@@ -184,21 +210,11 @@ def find_optimal_action_window(video_data):
                         best_score = w_score
                         best_start = s_idx
 
-                # Find peak burst second inside window for teaser
                 sub_win = sec_scores[best_start:best_start+win_len]
                 max_sub = max(sub_win, key=lambda x: x[1])
                 burst_peak_abs = max_sub[0]
-
-                # If multiple officer chapters exist, align start to the chapter containing the confrontation
-                if len(officer_chapters) >= 2:
-                    for ch_st, ch_name in reversed(officer_chapters):
-                        if ch_st <= burst_peak_abs and ch_st >= best_start - 15:
-                            print(f"[ActionFinder] Aligned cut to start of chapter '{ch_name}' at {ch_st}s")
-                            best_start = ch_st
-                            break
-
                 teaser_start = max(5.0, min(float(burst_peak_abs - best_start), 40.0))
-                print(f"[ActionFinder] Pinpointed action: start={best_start}s, teaser={teaser_start}s")
+                print(f"[ActionFinder] Audio window pinpoint: start={best_start}s, teaser={teaser_start}s")
                 return clamp_window(best_start, teaser_start, duration)
         except Exception as e:
             print(f"[ActionFinder] Audio scan notice: {e}")
@@ -296,7 +312,7 @@ REGLAS DE ORO DEL MONTAJE:
 3. BANNERS Y TÍTULOS:
    - 'spanish_title': Título impactante en mayúsculas (máximo 80 caracteres), con #Shorts.
    - 'badge_sub': "CASO REAL | [DEPARTAMENTO POLICIAL / CIUDAD]" (máx 40 caracteres).
-   - 'badge_title': Titular principal en mayúsculas (máx 35 caracteres, ej. "TIROS TRAS TASEO EN LA CERCA").
+   - 'badge_title': Titular principal en mayúsculas (máx 35 caracteres, debe reflejar fielmente el suceso real, ej. "DISPAROS CONTRA LA PATRULLA", sin inventar datos).
    - 'seo_description': Resumen forense completo con hashtags (#ExpedientePolicial #CasoReal #Dashcam #Bodycam #Shorts).
 
 Devuelve ÚNICAMENTE un objeto JSON válido (sin backticks markdown ```json, solo las llaves {{...}}):
@@ -379,7 +395,7 @@ Devuelve un JSON con:
         }
     }
 
-    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     for mod in models:
         try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{mod}:generateContent?key={api_key}"
@@ -405,7 +421,7 @@ def analyze_with_groq(api_key, video_data, optimal_window=None, dynamic_timestam
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json"
     }
-    models = ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.8-27b"]
+    models = ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]
     
     for mod in models:
         try:
@@ -415,7 +431,8 @@ def analyze_with_groq(api_key, video_data, optimal_window=None, dynamic_timestam
                     {"role": "system", "content": "Eres un asistente que responde ÚNICAMENTE con código JSON válido y nada más."},
                     {"role": "user", "content": prompt}
                 ],
-                "temperature": 0.3,
+                "response_format": {"type": "json_object"},
+                "temperature": 0.2,
                 "max_tokens": 1500
             }
             r = requests.post("https://api.groq.com/openai/v1/chat/completions", headers=headers, json=payload, timeout=25)
@@ -439,10 +456,10 @@ def analyze_with_groq(api_key, video_data, optimal_window=None, dynamic_timestam
 
 def analyze_with_gemini(api_key, video_data, optimal_window=None, dynamic_timestamps=None):
     """
-    Uses Gemini API (1.5 Flash / 2.0 Flash) text endpoint.
+    Uses Gemini API (2.0 Flash / 1.5 Flash) text endpoint.
     """
     prompt, suggested_start, slice_dur = build_prompt(video_data, optimal_window, dynamic_timestamps)
-    models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"]
+    models = ["gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"]
     payload = {
         "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {"temperature": 0.3}
@@ -492,15 +509,44 @@ def analyze_rule_based(video_data, optimal_window=None, dynamic_timestamps=None)
     if len(location) > 35:
         location = location[:35].strip()
 
-    badge_title = "INTERVENCIÓN ARMADA Y PERSECUCIÓN"
-    if "boat" in title.lower() or "sailboat" in title.lower():
+    desc_low = desc.lower()
+    title_low = title.lower()
+    full_text = f"{title_low} {desc_low}"
+
+    # Determine weapon and threat context dynamically
+    is_rod = any(w in full_text for w in ["metal rod", "metal rods", "rod", "pipe", "metal pipe", "crowbar", "bat", "blunt object"])
+    is_blade = any(w in full_text for w in ["knife", "machete", "axe", "blade", "stab", "edged weapon", "dagger"])
+    is_vehicle = any(w in full_text for w in ["ram", "rammed", "vehicle", "car chase", "pursuit", "crash", "pond"])
+    is_firearm = any(w in full_text for w in ["shoot", "shots", "shot", "gunfire", "handgun", "pistol", "revolver", "rifle", "firearm", "opened fire", "fired"])
+
+    if "boat" in title_low or "sailboat" in title_low:
         badge_title = "ABORDAJE Y TIROTEO EN VELERO"
-    elif "shot" in title.lower() or "fire" in title.lower():
+        action_text_3 = "¡Los oficiales abordan la embarcación y son recibidos con fuego letal inmediato!"
+        action_text_4 = "Los agentes devuelven los disparos y toman cobertura en la cubierta del velero."
+    elif is_rod:
+        badge_title = "ATAQUE CON VARILLAS METÁLICAS"
+        action_text_3 = "¡El sospechoso arremete armado con varillas metálicas amenazando la vida de los oficiales!"
+        action_text_4 = "Los agentes despliegan medidas de fuerza defensiva retrocediendo para evitar ser golpeados."
+    elif is_blade:
+        badge_title = "AGRESIÓN CON ARMA BLANCA"
+        action_text_3 = "¡El sospechoso se abalanza empuñando un arma blanca desafiando las órdenes letales!"
+        action_text_4 = "Los oficiales abren fuego defensivo para neutralizar el avance inminente del agresor."
+    elif is_vehicle:
+        badge_title = "EMBESTIDA Y PERSECUCIÓN POLICIAL"
+        action_text_3 = "¡El sospechoso acelera a fondo e impacta deliberadamente contra las patrullas policiales!"
+        action_text_4 = "Las unidades cercan el vehículo accidentado y extraen al conductor bajo custodia táctica."
+    elif is_firearm:
         badge_title = "TIROTEO CONTRA OFICIALES"
-    elif "taser" in title.lower():
-        badge_title = "TASEO Y ENFRENTAMIENTO ARMADO"
-    elif "ram" in title.lower() or "pond" in title.lower():
-        badge_title = "EMBESTIDA Y VUELCO DE FUGITIVO"
+        action_text_3 = "¡De imprevisto el sospechoso desenfunda un arma de fuego y dispara a quemarropa!"
+        action_text_4 = "Los oficiales responden de inmediato al fuego y toman cobertura tras sus patrullas."
+    elif "taser" in title_low:
+        badge_title = "DESPLIEGUE TÁCTICO Y TASEO"
+        action_text_3 = "¡El sujeto desobedece las órdenes y los oficiales despliegan descargas de taser para frenarlo!"
+        action_text_4 = "Los agentes aseguran al sospechoso en el suelo neutralizando la resistencia física."
+    else:
+        badge_title = "INTERVENCIÓN POLICIAL DE ALTO RIESGO"
+        action_text_3 = "¡El individuo se resiste violentamente iniciando una confrontación directa contra los oficiales!"
+        action_text_4 = "Los agentes intervienen con maniobras de control táctico para someter de inmediato al sujeto."
         
     badge_sub = f"CASO REAL | {location.upper()}"
     if len(badge_sub) > 40:
@@ -509,11 +555,11 @@ def analyze_rule_based(video_data, optimal_window=None, dynamic_timestamps=None)
     spanish_title = f"¡{badge_title}! | CASO REAL #Shorts"
     
     narrations = [
-        {"id": "narr_01", "start": t1, "text": f"Oficiales intervienen tácticamente en {location} tras rastrear una amenaza armada."},
-        {"id": "narr_02", "start": t2, "text": "Los agentes avanzan con armas desenfundadas exigiendo al sospechoso que se entregue."},
-        {"id": "narr_03", "start": t3, "text": "¡De imprevisto el sujeto abre fuego a quemarropa desatando una lluvia de disparos!"},
-        {"id": "narr_04", "start": t4, "text": "Los oficiales responden de inmediato y se repliegan para buscar cobertura bajo fuego cruzado."},
-        {"id": "narr_05", "start": t5, "text": "El perímetro es asegurado y la amenaza neutralizada. Suscríbete a Expediente Policial."}
+        {"id": "narr_01", "start": t1, "text": f"Oficiales intervienen en {location} tras recibir un reporte de emergencia."},
+        {"id": "narr_02", "start": t2, "text": "Los agentes avanzan con armas listas exigiendo al sospechoso mostrar las manos."},
+        {"id": "narr_03", "start": t3, "text": action_text_3},
+        {"id": "narr_04", "start": t4, "text": action_text_4},
+        {"id": "narr_05", "start": t5, "text": "El perímetro es asegurado y la situación controlada. Suscríbete a Expediente Policial."}
     ]
 
     seo_description = f"""Cámara corporal y análisis táctico oficial de los hechos ocurridos en {location}.

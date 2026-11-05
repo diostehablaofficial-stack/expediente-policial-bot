@@ -303,5 +303,20 @@
     "facebook_url": "https://www.facebook.com/1401571301731030",
     "status": "published",
     "processed_at": "2026-11-04 14:44:23"
+  },
+  {
+    "case_code": "EXP_028",
+    "video_id": "HJy0WnejlF4",
+    "original_title": "Houston Officers Shoot Woman After She Points Gun at Them",
+    "spanish_title": "¡ATAQUE CON VARILLAS METÁLICAS! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.28_1793838861/EXP_028_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=27Z3-Nrkpz8",
+    "buffer_post_id": "6aebcf1101b5398f879db44e",
+    "instagram_reel_id": "18126120490910343",
+    "instagram_url": "https://www.instagram.com/reel/DfVwX2wBuCo/",
+    "facebook_video_id": "1676183430525505",
+    "facebook_url": "https://www.facebook.com/1676183430525505",
+    "status": "published",
+    "processed_at": "2026-11-05 00:35:41"
   }
 ]

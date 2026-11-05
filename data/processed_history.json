@@ -318,5 +318,20 @@
     "facebook_url": "https://www.facebook.com/1676183430525505",
     "status": "published",
     "processed_at": "2026-11-05 00:35:41"
+  },
+  {
+    "case_code": "EXP_029",
+    "video_id": "ehYeX11aN84",
+    "original_title": "Detroit Officer Shoots Armed 18-year-old in the Back During Foot Chase",
+    "spanish_title": "OFICIAL DE DETROIT DISPARA A JOVEN ARMADO EN LA ESPALDA #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.29_1793903979/EXP_029_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=QAlLBpo08jU",
+    "buffer_post_id": "6aeccd717c2c23ac24ca4e9c",
+    "instagram_reel_id": "18097595939147303",
+    "instagram_url": "https://www.instagram.com/reel/DfXslHthFiz/",
+    "facebook_video_id": "1824411605420847",
+    "facebook_url": "https://www.facebook.com/1824411605420847",
+    "status": "published",
+    "processed_at": "2026-11-05 18:40:53"
   }
 ]

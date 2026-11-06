@@ -333,5 +333,20 @@
     "facebook_url": "https://www.facebook.com/1824411605420847",
     "status": "published",
     "processed_at": "2026-11-05 18:40:53"
+  },
+  {
+    "case_code": "EXP_030",
+    "video_id": "iaJX2uwNK2M",
+    "original_title": "Man Shoots Two Officers as They Attempt to Search Him",
+    "spanish_title": "DISPAROS A OFICIALES EN FALL RIVER #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.30_1793927476/EXP_030_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=F5ohUELnk_I",
+    "buffer_post_id": "6aed2939c1e74b84e5baea61",
+    "instagram_reel_id": "18018385373751368",
+    "instagram_url": "https://www.instagram.com/reel/DfYZdbJOxqR/",
+    "facebook_video_id": "1179129814685522",
+    "facebook_url": "https://www.facebook.com/1179129814685522",
+    "status": "published",
+    "processed_at": "2026-11-06 01:13:13"
   }
 ]

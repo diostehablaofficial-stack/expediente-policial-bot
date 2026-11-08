@@ -363,5 +363,20 @@
     "facebook_url": "https://www.facebook.com/1678332923967853",
     "status": "published",
     "processed_at": "2026-11-06 18:39:22"
+  },
+  {
+    "case_code": "EXP_032",
+    "video_id": "kYa7coKUgXs",
+    "original_title": "Man Pulls Gun On Officer After Being Ordered Out Of Car",
+    "spanish_title": "HOMBRE SACA REVOLVER Y DISPARA A OFICIALES EN CAMBRIDGE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.32_1794162374/EXP_032_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=8fP6ffLyVAU",
+    "buffer_post_id": "6af0becb51492b796e5425d1",
+    "instagram_reel_id": "18000868598825646",
+    "instagram_url": "https://www.instagram.com/reel/DffZbf4Bev2/",
+    "facebook_video_id": "1475469384536248",
+    "facebook_url": "https://www.facebook.com/1475469384536248",
+    "status": "published",
+    "processed_at": "2026-11-08 18:27:53"
   }
 ]

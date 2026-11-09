@@ -393,5 +393,20 @@
     "facebook_url": "https://www.facebook.com/1599319728612811",
     "status": "published",
     "processed_at": "2026-11-09 00:30:29"
+  },
+  {
+    "case_code": "EXP_034",
+    "video_id": "UKX9NblP2_Q",
+    "original_title": "Man Suddenly Attacks Police Officers During Welfare Check",
+    "spanish_title": "HOMBRE ATACA A POLICÍAS EN CONTROL DE BIENESTAR #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.34_1794249642/EXP_034_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=8Mkx6AW0mwA",
+    "buffer_post_id": "6af213af29d3f56e6919e9b8",
+    "instagram_reel_id": "18098232212450445",
+    "instagram_url": "https://www.instagram.com/reel/Dfh_8kwCC_m/",
+    "facebook_video_id": "2112567242701855",
+    "facebook_url": "https://www.facebook.com/2112567242701855",
+    "status": "published",
+    "processed_at": "2026-11-09 18:42:35"
   }
 ]

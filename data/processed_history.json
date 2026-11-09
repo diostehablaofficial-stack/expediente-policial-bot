@@ -378,5 +378,20 @@
     "facebook_url": "https://www.facebook.com/1475469384536248",
     "status": "published",
     "processed_at": "2026-11-08 18:27:53"
+  },
+  {
+    "case_code": "EXP_033",
+    "video_id": "KrbHHpl6M5U",
+    "original_title": "Chicago Police Pursuit Ends In Gunfire Inside Hotel Lobby",
+    "spanish_title": "DISPARO EN EL HOTEL MARQUIS: POLICÍA DE CHICAGO #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.33_1794184159/EXP_033_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=D218_TymsQQ",
+    "buffer_post_id": "6af113e39214322f68863e73",
+    "instagram_reel_id": "17932791975441371",
+    "instagram_url": "https://www.instagram.com/reel/DfgC-WdNO4_/",
+    "facebook_video_id": "1599319728612811",
+    "facebook_url": "https://www.facebook.com/1599319728612811",
+    "status": "published",
+    "processed_at": "2026-11-09 00:30:29"
   }
 ]

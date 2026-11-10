@@ -408,5 +408,20 @@
     "facebook_url": "https://www.facebook.com/2112567242701855",
     "status": "published",
     "processed_at": "2026-11-09 18:42:35"
+  },
+  {
+    "case_code": "EXP_035",
+    "video_id": "PR_ElYBnZPQ",
+    "original_title": "Teen Burglary Suspect Shot After Pointing Flashlight at Deputy",
+    "spanish_title": "TIRO A JOVEN POR LUZ DE CELULAR EN MINNEOLA #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.35_1794270499/EXP_035_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=MrORFrXNyMc",
+    "buffer_post_id": "6af26526223aa16048db3abf",
+    "instagram_reel_id": "18111708763910926",
+    "instagram_url": "https://www.instagram.com/reel/DfinpqOtNRG/",
+    "facebook_video_id": "1632971121343395",
+    "facebook_url": "https://www.facebook.com/1632971121343395",
+    "status": "published",
+    "processed_at": "2026-11-10 00:29:34"
   }
 ]

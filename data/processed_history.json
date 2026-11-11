@@ -453,5 +453,20 @@
     "facebook_url": "https://www.facebook.com/1172777648651530",
     "status": "published",
     "processed_at": "2026-11-11 00:30:08"
+  },
+  {
+    "case_code": "EXP_038",
+    "video_id": "WYeRDnBair8",
+    "original_title": "NYPD Officers Shoot Woman After She Charges at Them With Two Knives",
+    "spanish_title": "NYPD DISPARA A SUSPECT CON CUCHILLOS EN TIMES SQUARE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.38_1794422452/EXP_038_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=YD5HiHTPP0A",
+    "buffer_post_id": "6af4b6b9a77244ffce8c6f6d",
+    "instagram_reel_id": "18155521477490076",
+    "instagram_url": "https://www.instagram.com/reel/DfnJfPcBAcZ/",
+    "facebook_video_id": "3371974149655837",
+    "facebook_url": "https://www.facebook.com/3371974149655837",
+    "status": "published",
+    "processed_at": "2026-11-11 18:42:06"
   }
 ]

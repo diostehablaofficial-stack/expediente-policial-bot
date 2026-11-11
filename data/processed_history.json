@@ -438,5 +438,20 @@
     "facebook_url": "https://www.facebook.com/3532134443612756",
     "status": "published",
     "processed_at": "2026-11-10 18:32:24"
+  },
+  {
+    "case_code": "EXP_037",
+    "video_id": "UA6tQ_uDkOM",
+    "original_title": "Cop Shoots Suspect Who Pulls Gun & Fires During Struggle",
+    "spanish_title": "¡DISPARO EN LA PATRULLA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.37_1794356933/EXP_037_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=wiYeWqggUX0",
+    "buffer_post_id": "6af3b6c86be08f4f9c76886f",
+    "instagram_reel_id": "18134784736670833",
+    "instagram_url": "https://www.instagram.com/reel/DflMgq8PF3h/",
+    "facebook_video_id": "1172777648651530",
+    "facebook_url": "https://www.facebook.com/1172777648651530",
+    "status": "published",
+    "processed_at": "2026-11-11 00:30:08"
   }
 ]

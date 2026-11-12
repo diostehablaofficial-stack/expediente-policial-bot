@@ -468,5 +468,20 @@
     "facebook_url": "https://www.facebook.com/3371974149655837",
     "status": "published",
     "processed_at": "2026-11-11 18:42:06"
+  },
+  {
+    "case_code": "EXP_039",
+    "video_id": "3X6zXfnzMKA",
+    "original_title": "Officer Fires Eight Shots After Struggle With Driver",
+    "spanish_title": "¡ATAQUE CON VARILLAS METÁLICAS! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.39_1794508771/EXP_039_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=s7tIs3cM3ak",
+    "buffer_post_id": "6af607e668b55f457c167f76",
+    "instagram_reel_id": "18127625260893036",
+    "instagram_url": "https://www.instagram.com/reel/DfpuLAViktE/",
+    "facebook_video_id": "1695411758871311",
+    "facebook_url": "https://www.facebook.com/1695411758871311",
+    "status": "published",
+    "processed_at": "2026-11-12 18:41:38"
   }
 ]

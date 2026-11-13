@@ -483,5 +483,20 @@
     "facebook_url": "https://www.facebook.com/1695411758871311",
     "status": "published",
     "processed_at": "2026-11-12 18:41:38"
+  },
+  {
+    "case_code": "EXP_040",
+    "video_id": "FnVML1NDk34",
+    "original_title": "LAPD Cop Shoots at Suspect After He Aims an Airsoft Rifle",
+    "spanish_title": "DISPARO DE POLICÍA A SUSPECT CON ARMA DE JUEGO EN LOS ÁNGELES #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.40_1794594955/EXP_040_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=5J8TzbpKlh0",
+    "buffer_post_id": "6af7588e7d320dbe3ec550af",
+    "instagram_reel_id": "18121842047468530",
+    "instagram_url": "https://www.instagram.com/reel/DfsSgMBBMHt/",
+    "facebook_video_id": "1660654972279262",
+    "facebook_url": "https://www.facebook.com/1660654972279262",
+    "status": "published",
+    "processed_at": "2026-11-13 18:37:33"
   }
 ]

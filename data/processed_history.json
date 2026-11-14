@@ -513,5 +513,20 @@
     "facebook_url": "https://www.facebook.com/2164477680810051",
     "status": "published",
     "processed_at": "2026-11-14 00:32:44"
+  },
+  {
+    "case_code": "EXP_042",
+    "video_id": "07kitYfqpLo",
+    "original_title": "Bodycam Shows Officer Tasing Suspect Before Fatal Police Shooting",
+    "spanish_title": "OFICIALES DISPARAN A SUSPECTO TRAS USAR TASER EN ALLIANCE, OHIO #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.42_1794680749/EXP_042_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=XM0-hAuC-WA",
+    "buffer_post_id": "6af8a7b1918fe79d2e98a185",
+    "instagram_reel_id": "18108061811211473",
+    "instagram_url": "https://www.instagram.com/reel/Dfu2KHvBAfQ/",
+    "facebook_video_id": "1691967319292669",
+    "facebook_url": "https://www.facebook.com/1691967319292669",
+    "status": "published",
+    "processed_at": "2026-11-14 18:27:16"
   }
 ]

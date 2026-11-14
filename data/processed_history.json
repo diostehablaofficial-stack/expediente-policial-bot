@@ -498,5 +498,20 @@
     "facebook_url": "https://www.facebook.com/1660654972279262",
     "status": "published",
     "processed_at": "2026-11-13 18:37:33"
+  },
+  {
+    "case_code": "EXP_041",
+    "video_id": "EpQg3snLvd8",
+    "original_title": "Suspect Walks Past Officers Then Gets Shot After Pulling Gun",
+    "spanish_title": "¡AGRESIÓN CON ARMA BLANCA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.41_1794616226/EXP_041_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=YiyOl-sc6_U",
+    "buffer_post_id": "6af7aba678196a0a972ea5ef",
+    "instagram_reel_id": "17918079147551891",
+    "instagram_url": "https://www.instagram.com/reel/Dfs7KegCZh4/",
+    "facebook_video_id": "2164477680810051",
+    "facebook_url": "https://www.facebook.com/2164477680810051",
+    "status": "published",
+    "processed_at": "2026-11-14 00:32:44"
   }
 ]

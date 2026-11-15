@@ -543,5 +543,20 @@
     "facebook_url": "https://www.facebook.com/1475612348006625",
     "status": "published",
     "processed_at": "2026-11-15 00:29:20"
+  },
+  {
+    "case_code": "EXP_044",
+    "video_id": "vkRm5LVGiqs",
+    "original_title": "Officer Opens Fire as Man Charges at Him With Large Blade",
+    "spanish_title": "OFICIAL DISPARA A HOMBRE ARMADO CON CUCHILLO EN SANTA MONICA #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.44_1794767172/EXP_044_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=VFs3V3o07o4",
+    "buffer_post_id": "6af9f949c5b364e0627430a1",
+    "instagram_reel_id": "18158543392522748",
+    "instagram_url": "https://www.instagram.com/reel/Dfxa_ESlWAO/",
+    "facebook_video_id": "1671412274622772",
+    "facebook_url": "https://www.facebook.com/1671412274622772",
+    "status": "published",
+    "processed_at": "2026-11-15 18:27:47"
   }
 ]

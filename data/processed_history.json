@@ -558,5 +558,20 @@
     "facebook_url": "https://www.facebook.com/1671412274622772",
     "status": "published",
     "processed_at": "2026-11-15 18:27:47"
+  },
+  {
+    "case_code": "EXP_045",
+    "video_id": "C6YcqJyyRi8",
+    "original_title": "Deputy Gets Hit By Gunfire During SWAT Raid",
+    "spanish_title": "DEPUTADO HERIDO EN TIRO EN RAIDE SWAT #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.45_1794789831/EXP_045_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=BE0JfkSPrqI",
+    "buffer_post_id": "6afa51cca869c35e5ba95771",
+    "instagram_reel_id": "17969387457227863",
+    "instagram_url": "https://www.instagram.com/reel/DfyGNDRgovI/",
+    "facebook_video_id": "4658911954390814",
+    "facebook_url": "https://www.facebook.com/4658911954390814",
+    "status": "published",
+    "processed_at": "2026-11-16 00:45:28"
   }
 ]

@@ -573,5 +573,20 @@
     "facebook_url": "https://www.facebook.com/4658911954390814",
     "status": "published",
     "processed_at": "2026-11-16 00:45:28"
+  },
+  {
+    "case_code": "EXP_046",
+    "video_id": "4k8B36yXtUk",
+    "original_title": "Houston Officers Shoot Man Armed With Rifle on Front Porch",
+    "spanish_title": "DISPAROS EN PORCHE DE HOUSTON: OFICIALES ABREN FUEGO #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.46_1794854541/EXP_046_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=doGMk93Yrgw",
+    "buffer_post_id": "6afb4e91be9cb91737ef310a",
+    "instagram_reel_id": "17947682475083551",
+    "instagram_url": "https://www.instagram.com/reel/Df0BoDoh5SZ/",
+    "facebook_video_id": "1153685533727583",
+    "facebook_url": "https://www.facebook.com/1153685533727583",
+    "status": "published",
+    "processed_at": "2026-11-16 18:43:40"
   }
 ]

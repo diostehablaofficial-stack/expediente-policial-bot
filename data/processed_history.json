@@ -588,5 +588,20 @@
     "facebook_url": "https://www.facebook.com/1153685533727583",
     "status": "published",
     "processed_at": "2026-11-16 18:43:40"
+  },
+  {
+    "case_code": "EXP_047",
+    "video_id": "Ezsiuwri-K8",
+    "original_title": "Suspect Crashes into Police Motorcycle Before Officers Open Fire",
+    "spanish_title": "¡DISPARO EN LA VÍA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.47_1794941054/EXP_047_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=RYav0Cy_6H4",
+    "buffer_post_id": "6afca0837ab2c2731e0b3ef0",
+    "instagram_reel_id": "18103956779383718",
+    "instagram_url": "https://www.instagram.com/reel/Df2mpKHIzII/",
+    "facebook_video_id": "2126824088028282",
+    "facebook_url": "https://www.facebook.com/2126824088028282",
+    "status": "published",
+    "processed_at": "2026-11-17 18:45:38"
   }
 ]

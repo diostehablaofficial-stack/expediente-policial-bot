@@ -603,5 +603,20 @@
     "facebook_url": "https://www.facebook.com/2126824088028282",
     "status": "published",
     "processed_at": "2026-11-17 18:45:38"
+  },
+  {
+    "case_code": "EXP_048",
+    "video_id": "U3tLD6W68v4",
+    "original_title": "Alaska Officers Shoot Armed Felon During Foot Pursuit",
+    "spanish_title": "DISPAROS EN EL ESTACIONAMIENTO DEL BENTLEY MALL - CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.48_1794962530/EXP_048_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=0oe71-Oqio4",
+    "buffer_post_id": "6afcf4669f3765f6ab1e41d5",
+    "instagram_reel_id": "18100810217399043",
+    "instagram_url": "https://www.instagram.com/reel/Df3PmnOAO10/",
+    "facebook_video_id": "1206279641861841",
+    "facebook_url": "https://www.facebook.com/1206279641861841",
+    "status": "published",
+    "processed_at": "2026-11-18 00:43:27"
   }
 ]

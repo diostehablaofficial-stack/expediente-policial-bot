@@ -618,5 +618,20 @@
     "facebook_url": "https://www.facebook.com/1206279641861841",
     "status": "published",
     "processed_at": "2026-11-18 00:43:27"
+  },
+  {
+    "case_code": "EXP_049",
+    "video_id": "uJ-yJWOVs1o",
+    "original_title": "Man Calls 911 About Imaginary Intruders Then Starts Shooting",
+    "spanish_title": "SECUELA DE DISPAROS EN ALBUQUERQUE | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.49_1795027253/EXP_049_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=D146dAw437A",
+    "buffer_post_id": "6afdf139bcac997158e7bee1",
+    "instagram_reel_id": "18497726506107649",
+    "instagram_url": "https://www.instagram.com/reel/Df5LE1UBNVD/",
+    "facebook_video_id": "1525197923056728",
+    "facebook_url": "https://www.facebook.com/1525197923056728",
+    "status": "published",
+    "processed_at": "2026-11-18 18:42:28"
   }
 ]

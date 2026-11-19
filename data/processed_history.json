@@ -648,5 +648,20 @@
     "facebook_url": "https://www.facebook.com/1666112848326705",
     "status": "published",
     "processed_at": "2026-11-19 00:47:03"
+  },
+  {
+    "case_code": "EXP_051",
+    "video_id": "KFwAMI2lVKo",
+    "original_title": "Elderly Woman Fires Gun Inside Police Department Lobby",
+    "spanish_title": "MUJER DE 71 AÑOS DISPARA EN EL LOBBY DE LA POLICÍA DE PORT ORANGE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.51_1795113965/EXP_051_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=nm74jzToLNg",
+    "buffer_post_id": "6aff43f015ae0c3990020755",
+    "instagram_reel_id": "18144174217723840",
+    "instagram_url": "https://www.instagram.com/reel/Df7wbxJp4SO/",
+    "facebook_video_id": "1499480498728038",
+    "facebook_url": "https://www.facebook.com/1499480498728038",
+    "status": "published",
+    "processed_at": "2026-11-19 18:47:15"
   }
 ]

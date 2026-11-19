@@ -633,5 +633,20 @@
     "facebook_url": "https://www.facebook.com/1525197923056728",
     "status": "published",
     "processed_at": "2026-11-18 18:42:28"
+  },
+  {
+    "case_code": "EXP_050",
+    "video_id": "YwVsNMwD6rw",
+    "original_title": "Deputies Shoot Armed Man After He Reaches for Gun",
+    "spanish_title": "DEPUTADOS DISPARAN A HOMBRE ARMADO EN BELLFLOWER - INCIDENTE REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.50_1795049143/EXP_050_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=r5P3Ed5LAsk",
+    "buffer_post_id": "6afe46bba588bd6687ab8ca2",
+    "instagram_reel_id": "18153737680516808",
+    "instagram_url": "https://www.instagram.com/reel/Df50zKZADcW/",
+    "facebook_video_id": "1666112848326705",
+    "facebook_url": "https://www.facebook.com/1666112848326705",
+    "status": "published",
+    "processed_at": "2026-11-19 00:47:03"
   }
 ]

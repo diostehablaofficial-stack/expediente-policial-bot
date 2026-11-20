@@ -663,5 +663,20 @@
     "facebook_url": "https://www.facebook.com/1499480498728038",
     "status": "published",
     "processed_at": "2026-11-19 18:47:15"
+  },
+  {
+    "case_code": "EXP_052",
+    "video_id": "z14VhcWi3Cs",
+    "original_title": "Deputies Shoot Man After He Points BB Gun at Them",
+    "spanish_title": "DISPARO A UN HOMBRE ARMADO CON BB GUN EN PORT CHARLOTTE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.52_1795134923/EXP_052_Short_Vertical.mp4",
+    "youtube_url": null,
+    "buffer_post_id": "6aff95cf7b0a126ceb950b4a",
+    "instagram_reel_id": "17892382470624583",
+    "instagram_url": "https://www.instagram.com/reel/Df8YecotTKu/",
+    "facebook_video_id": "3268252626718676",
+    "facebook_url": "https://www.facebook.com/3268252626718676",
+    "status": "published",
+    "processed_at": "2026-11-20 00:36:50"
   }
 ]

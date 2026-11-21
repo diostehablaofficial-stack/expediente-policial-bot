@@ -693,5 +693,20 @@
     "facebook_url": "https://www.facebook.com/1445736161057764",
     "status": "published",
     "processed_at": "2026-11-20 18:46:56"
+  },
+  {
+    "case_code": "EXP_054",
+    "video_id": "I5Mc3jW_7h4",
+    "original_title": "San Diego Officer Shoots Man Who Charges at Him With an Axe",
+    "spanish_title": "¡OFICINARIO DE SAN DIEGO DISPARA A HOMBRE CON HACHETE! #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.54_1795221517/EXP_054_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=UFIt0hahDtk",
+    "buffer_post_id": "6b00e8129ffbc8503ce88f1a",
+    "instagram_reel_id": "18117732059464539",
+    "instagram_url": "https://www.instagram.com/reel/Df-9pcnNM1O/",
+    "facebook_video_id": "1575237647744628",
+    "facebook_url": "https://www.facebook.com/1575237647744628",
+    "status": "published",
+    "processed_at": "2026-11-21 00:40:30"
   }
 ]

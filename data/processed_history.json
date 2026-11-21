@@ -708,5 +708,20 @@
     "facebook_url": "https://www.facebook.com/1575237647744628",
     "status": "published",
     "processed_at": "2026-11-21 00:40:30"
+  },
+  {
+    "case_code": "EXP_055",
+    "video_id": "z1xFDpWyTSo",
+    "original_title": "Deputy Opens Fire After Knife-Wielding Bicyclist Charges at Him",
+    "spanish_title": "DEPUTADO DISPARA A CICLISTA ARMADO EN ALBUQUERQUE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.55_1795300338/EXP_055_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=CZ98BoRYWyk",
+    "buffer_post_id": "6b021bf8d5eabfb8cc66585b",
+    "instagram_reel_id": "18079951190450787",
+    "instagram_url": "https://www.instagram.com/reel/DgBT9cxhn9c/",
+    "facebook_video_id": "2308862023246992",
+    "facebook_url": "https://www.facebook.com/2308862023246992",
+    "status": "published",
+    "processed_at": "2026-11-21 22:33:57"
   }
 ]

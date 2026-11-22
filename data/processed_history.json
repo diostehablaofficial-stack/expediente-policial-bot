@@ -738,5 +738,20 @@
     "facebook_url": "https://www.facebook.com/1454391662826374",
     "status": "published",
     "processed_at": "2026-11-22 03:47:25"
+  },
+  {
+    "case_code": "EXP_057",
+    "video_id": "xJk2OCOMlu8",
+    "original_title": "Officers Face Split-Second Decision After Woman Grabs Knife",
+    "spanish_title": "OFICIALES ENFRENTAN A MUJER ARMADA CON CUCHILLO EN DEARBORN #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.57_1795388163/EXP_057_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=b6GBRdlR9FI",
+    "buffer_post_id": "6b037307c72676f5e9681fc4",
+    "instagram_reel_id": "18017460128977889",
+    "instagram_url": "https://www.instagram.com/reel/DgD7bkdyAHd/",
+    "facebook_video_id": "1169788825996494",
+    "facebook_url": "https://www.facebook.com/1169788825996494",
+    "status": "published",
+    "processed_at": "2026-11-22 22:57:18"
   }
 ]

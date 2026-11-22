@@ -723,5 +723,20 @@
     "facebook_url": "https://www.facebook.com/2308862023246992",
     "status": "published",
     "processed_at": "2026-11-21 22:33:57"
+  },
+  {
+    "case_code": "EXP_056",
+    "video_id": "ljK6uVdmf0s",
+    "original_title": "10-year-old Boy Shoots Teen Neighbor After Mom Gets Into Fight",
+    "spanish_title": "NIÑO DE 10 AÑOS DISPARA A ADOLESCENTE EN ALBUQUERQUE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.56_1795319119/EXP_056_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=TrWF5zSr-x4",
+    "buffer_post_id": "6b026555846b0ee90759545a",
+    "instagram_reel_id": "18093627515503175",
+    "instagram_url": "https://www.instagram.com/reel/DgB30qIymO4/",
+    "facebook_video_id": "1454391662826374",
+    "facebook_url": "https://www.facebook.com/1454391662826374",
+    "status": "published",
+    "processed_at": "2026-11-22 03:47:25"
   }
 ]

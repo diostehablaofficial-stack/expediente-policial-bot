@@ -753,5 +753,20 @@
     "facebook_url": "https://www.facebook.com/1169788825996494",
     "status": "published",
     "processed_at": "2026-11-22 22:57:18"
+  },
+  {
+    "case_code": "EXP_058",
+    "video_id": "aVigBeZ8Kck",
+    "original_title": "Suspect Steals Police Car Then Crashes Through a House",
+    "spanish_title": "¡EMBESTIDA Y PERSECUCIÓN POLICIAL! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.58_1795407760/EXP_058_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=sR5I4hyykRo",
+    "buffer_post_id": "6b03bf95a6de38de9ebabd7d",
+    "instagram_reel_id": "18039101879911546",
+    "instagram_url": "https://www.instagram.com/reel/DgEgzzwq1_7/",
+    "facebook_video_id": "1145066934943767",
+    "facebook_url": "https://www.facebook.com/1145066934943767",
+    "status": "published",
+    "processed_at": "2026-11-23 04:23:56"
   }
 ]

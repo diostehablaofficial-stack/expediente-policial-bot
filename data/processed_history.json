@@ -783,5 +783,20 @@
     "facebook_url": "https://www.facebook.com/1707217347404650",
     "status": "published",
     "processed_at": "2026-11-25 01:45:19"
+  },
+  {
+    "case_code": "EXP_060",
+    "video_id": "qwA8rF2n3Z4",
+    "original_title": "Bodycam Catches Former Officer Shoving Teen Off Bicycle",
+    "spanish_title": "OFICIAL EMPUJA A ADOLESCENTE DE SU BICICLETA EN CHARLOTTE #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.60_1795742066/EXP_060_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=iKLIIKMKHoI",
+    "buffer_post_id": "6b08d97570e2a88e2ce6343f",
+    "instagram_reel_id": "18104470481061322",
+    "instagram_url": "https://www.instagram.com/reel/DgOecXSAXe0/",
+    "facebook_video_id": "1930654394583692",
+    "facebook_url": "https://www.facebook.com/1930654394583692",
+    "status": "published",
+    "processed_at": "2026-11-27 01:15:40"
   }
 ]

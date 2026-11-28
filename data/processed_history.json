@@ -798,5 +798,20 @@
     "facebook_url": "https://www.facebook.com/1930654394583692",
     "status": "published",
     "processed_at": "2026-11-27 01:15:40"
+  },
+  {
+    "case_code": "EXP_061",
+    "video_id": "wAvbaRzvvsQ",
+    "original_title": "Police Tase Man During Reported Assault on Woman",
+    "spanish_title": "¡AGRESIÓN CON ARMA BLANCA! | CASO REAL #Shorts",
+    "video_url": "https://github.com/diostehablaofficial-stack/expediente-policial-bot/releases/download/v1.0.61_1795826926/EXP_061_Short_Vertical.mp4",
+    "youtube_url": "https://www.youtube.com/watch?v=5JREAN0CfRo",
+    "buffer_post_id": "6b0a24f223fb5b7700075224",
+    "instagram_reel_id": "18134956246687918",
+    "instagram_url": "https://www.instagram.com/reel/DgRATmiKpEM/",
+    "facebook_video_id": "1863053371556499",
+    "facebook_url": "https://www.facebook.com/1863053371556499",
+    "status": "published",
+    "processed_at": "2026-11-28 00:50:05"
   }
 ]
